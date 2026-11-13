@@ -30,7 +30,12 @@ inline constexpr std::string_view bendOnMacroId = "bendOnMacro", bendOnMicroId =
 inline constexpr std::string_view breakOnMacroId = "breakOnMacro", breakOnMicroId = "breakOnMicro";
 inline constexpr std::string_view kModes[] = { "Macro", "Micro" };
 
-inline constexpr int kStateVersion = 3;
+// Stage 3. seed: 0 = a new random seed each session; any other value makes Macro mode reproducible.
+inline constexpr std::string_view stereoModeId = "stereoMode", seedId = "seed";
+inline constexpr std::string_view kStereoModes[] = { "Unique", "Shared" };
+inline constexpr int kMaxSeed = 99999;
+
+inline constexpr int kStateVersion = 4;
 
 float dbToGain (float db) noexcept;
 } // namespace fault::params

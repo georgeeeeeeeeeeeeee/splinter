@@ -3,6 +3,9 @@ add_library(fault_dsp STATIC
     Params.cpp
     RecordBuffer.cpp
     Clock.cpp
+    MacroTables.cpp
+    MacroBend.cpp
+    MacroBreak.cpp
     Engine.cpp)
 target_include_directories(fault_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_features(fault_dsp PUBLIC cxx_std_20)

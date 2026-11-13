@@ -33,3 +33,15 @@ The brief's `bendOn` and `breakOn` are "stored per mode". They're implemented as
 
 ## D10 — MIDI reaches the engine sample-accurately
 The processor queues each note with its block offset (`Engine::queueNote`), and the engine applies it on that sample. Output with notes is identical at any host block size (tested).
+
+## D11 — Two voices (Stage 3)
+The engine has one voice per channel (window, head, fade tail, Macro state), each reading its own channel of the buffer. Micro mode and Shared stereo give both voices the same decisions. Stage 1 and 2 output is unchanged (their tests are bit-identical).
+
+## D12 — MacroTables: one struct, a JSON file, a baked include
+`dsp/MacroTables.h` holds every Macro number as floats or float arrays, with a field list (name, offset, size, note) that the JSON reader and writer and the baker iterate over. `tuning/macro_tables.json` is the working copy. Dev plug-in builds poll it (every 400 ms, message thread) and hand new tables to the engine through a one-slot lock-free mailbox (`Engine::setTables`); the engine copies them in at the start of the next block. `fault-render --bake-tables` writes `MacroTablesBaked.inc`, which `MacroTables::defaults()` includes. The CMake option `FAULT_DEV_TABLES` (on for now) controls the hot reload and is switched off for release.
+
+## D13 — Randomness
+PCG32, one stream per decision kind and channel (Bend L/R, Break L/R). Seed 0: the streams are seeded once per session (the plug-in uses the system RNG; the CLI's `sessionSeed` defaults to 1, so renders are reproducible). Seed ≠ 0: every tick seeds a fresh generator from (seed, stream, tick index). The clock reports each tick's index (`Clock::tickIndex`). Tested: bit-identical at block sizes 1, 512 and random, and identical decisions per grid position from different start points.
+
+## D14 — New parameters (Stage 3)
+`stereoMode` (Unique / Shared, default Unique) and `seed` (0–99999, 0 shown as "Random"). State version 4.

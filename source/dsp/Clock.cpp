@@ -29,12 +29,16 @@ void Clock::reset() noexcept
     lastPpqEnd_ = -1.0;
     resync_ = false;
     numTicks_ = 0;
+    freeCount_ = 0;
 }
 
-void Clock::addTick (int offset) noexcept
+void Clock::addTick (int offset, int64_t index) noexcept
 {
     if (numTicks_ < kMaxTicks && (numTicks_ == 0 || offset > ticks_[(size_t) numTicks_ - 1]))
-        ticks_[(size_t) numTicks_++] = offset;
+    {
+        ticks_[(size_t) numTicks_] = offset;
+        index_[(size_t) numTicks_++] = index;
+    }
 }
 
 void Clock::beginBlock (const HostTransport& t, int n) noexcept
@@ -66,7 +70,7 @@ void Clock::beginBlock (const HostTransport& t, int n) noexcept
             const int offset = (int) std::ceil (((double) k / rate - t.ppq) / bps - 1.0e-6);
             if (offset >= n)
                 break;
-            addTick (std::max (0, offset));
+            addTick (std::max (0, offset), k);
         }
         lastPpqEnd_ = t.ppq + n * bps;
         wasPlaying_ = true;
@@ -81,7 +85,8 @@ void Clock::beginBlock (const HostTransport& t, int n) noexcept
     {
         resync_ = false;
         phase_ = 0.0;
-        addTick (0);   // Reset in internal mode: a new window right away
+        freeCount_ = 0;
+        addTick (0, freeCount_++);   // Reset in internal mode: a new window right away
     }
     const double inc = 1.0 / std::max (1.0, period_);
     for (int i = 0; i < n; ++i)
@@ -90,7 +95,7 @@ void Clock::beginBlock (const HostTransport& t, int n) noexcept
         if (phase_ >= 1.0)
         {
             phase_ -= 1.0;
-            addTick (i);
+            addTick (i, freeCount_++);
         }
     }
 }

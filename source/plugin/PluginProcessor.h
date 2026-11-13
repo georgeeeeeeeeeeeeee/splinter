@@ -7,6 +7,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include <array>
+#include <optional>
 #include <atomic>
 
 namespace fault
@@ -17,7 +18,7 @@ struct MidiLogEvent
     int channel = 0, data1 = 0, data2 = 0, sampleOffset = 0, blockSize = 0;
 };
 
-class FaultProcessor final : public juce::AudioProcessor
+class FaultProcessor final : public juce::AudioProcessor, private juce::Timer
 {
 public:
     FaultProcessor();
@@ -47,12 +48,20 @@ public:
     int popMidi (MidiLogEvent* dest, int max) noexcept;   // UI thread
     std::array<std::atomic<int>, 4> counts {};             // notes on, notes off, CCs, pitch bends
     const dsp::Engine& engine() const noexcept { return engine_; }
+    // Dev builds: tuning/macro_tables.json, reloaded when saved. Message thread only.
+    juce::String tablesStatus() const { return tablesStatus_; }
 
 private:
+    void timerCallback() override;   // dev builds: watch the tables file
     dsp::EngineParams readParams() const noexcept;
+    juce::File tablesFile_;
+    juce::Time tablesTime_;
+    std::optional<dsp::MacroTables> tablesWaiting_;
+    juce::String tablesStatus_ { "Macro tables: compiled in" };
     juce::AudioProcessorValueTreeState apvts;
     struct Raw { std::atomic<float> *time, *repeats, *mix, *windowing, *width, *freeze, *reset, *clock, *freezeMode,
-                       *mode, *bend, *brk, *bendOnMacro, *bendOnMicro, *breakOnMacro, *breakOnMicro, *noteToSpeed; } raw {};
+                       *mode, *bend, *brk, *bendOnMacro, *bendOnMicro, *breakOnMacro, *breakOnMicro, *noteToSpeed,
+                       *stereo, *seed; } raw {};
     dsp::Engine engine_;
     bool resetHeld = false;
     static constexpr int kFifo = 512;

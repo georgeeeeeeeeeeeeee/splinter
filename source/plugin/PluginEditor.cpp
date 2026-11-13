@@ -37,6 +37,9 @@ FaultEditor::FaultEditor (FaultProcessor& p) : AudioProcessorEditor (p), proc (p
     }
     tickInfo.setColour (juce::Label::textColourId, juce::Colour (0xff4fd1b5));
     addAndMakeVisible (tickInfo);
+    tablesInfo.setColour (juce::Label::textColourId, juce::Colour (0xffb0b6bf));
+    tablesInfo.setFont (juce::FontOptions (12.0f));
+    addAndMakeVisible (tablesInfo);
     log.setMultiLine (true);
     log.setReadOnly (true);
     log.setCaretVisible (false);
@@ -46,7 +49,7 @@ FaultEditor::FaultEditor (FaultProcessor& p) : AudioProcessorEditor (p), proc (p
     addAndMakeVisible (log);
     counts.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (counts);
-    setSize (620, 640);
+    setSize (620, 760);
     startTimerHz (30);
 }
 
@@ -58,7 +61,7 @@ void FaultEditor::paint (juce::Graphics& g)
     g.drawText ("FAULT", 16, 10, 200, 28, juce::Justification::centredLeft);
     g.setColour (juce::Colours::grey);
     g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("Stage 1 debug UI  v" JucePlugin_VersionString, 200, 10, 344, 28, juce::Justification::centredRight);
+    g.drawText ("Stage 3 debug UI  v" JucePlugin_VersionString, 200, 10, 344, 28, juce::Justification::centredRight);
 }
 
 void FaultEditor::resized()
@@ -72,6 +75,7 @@ void FaultEditor::resized()
         row.control->setBounds (line.reduced (0, 2));
     }
     tickInfo.setBounds (r.removeFromTop (24));
+    tablesInfo.setBounds (r.removeFromTop (20));
     r.removeFromTop (6);
     counts.setBounds (r.removeFromBottom (22));
     log.setBounds (r);
@@ -98,8 +102,10 @@ void FaultEditor::timerCallback()
         log.insertTextAtCaret (line);
     }
     const auto& w = proc.engine().window();
+    tablesInfo.setText (proc.tablesStatus(), juce::dontSendNotification);
     tickInfo.setText ("ticks " + juce::String ((juce::int64) proc.engine().ticksWritten()) + "   window " + juce::String (w.length / proc.engine().sampleRate(), 3)
-                          + " s   repeats " + juce::String (w.repeats) + (proc.engine().buffer().frozen() ? "   FROZEN" : ""),
+                          + " s   slices " + juce::String (w.repeats) + "   speed L " + juce::String (proc.engine().status().speed.load(), 2)
+                          + "x  R " + juce::String (proc.engine().status().speedR.load(), 2) + "x" + (proc.engine().buffer().frozen() ? "   FROZEN" : ""),
                       juce::dontSendNotification);
     counts.setText ("note-ons " + juce::String (proc.counts[0].load()) + "   note-offs " + juce::String (proc.counts[1].load())
                         + "   CCs " + juce::String (proc.counts[2].load()) + "   pitch bends " + juce::String (proc.counts[3].load()),

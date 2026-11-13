@@ -26,6 +26,7 @@ public:
 
     // 4-point Hermite read at an absolute fractional position; positions outside what's held read 0.
     void read (double pos, float& l, float& r) const noexcept;
+    float read (int channel, double pos) const noexcept;   // one channel (0 = L, 1 = R), same maths
 
 private:
     float at (const std::vector<float>& ch, int64_t i) const noexcept;

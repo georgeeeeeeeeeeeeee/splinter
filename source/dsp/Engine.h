@@ -1,16 +1,20 @@
 #pragma once
-// Fault's engine: owns the buffer, clock, window, playheads and output stage, and processes a block.
+// Fault's engine: owns the buffer, clock, playheads and output stage, and processes a block.
 // Pure C++ (no JUCE), plus a small C API at the bottom for the WASM route.
 //
 // Per sample: write the input into the RecordBuffer (unless frozen) -> clock ticks capture a new window
-// (the most recent `period` samples) -> the playhead loops the current slice (Repeats) -> SliceEnvelope
-// -> Mix (equal-power) with Width (M/S) on the wet.
-// A jump (new window, slice wrap, reset) that lands mid-slice hands the old head to a short fade-out
+// (the most recent `period` samples) -> each channel's voice loops its slice (Repeats) -> SliceEnvelope
+// and silence -> Mix (equal-power) with Width (M/S) on the wet.
+// Two voices, one per channel. In Micro mode, and in Macro with Shared stereo, they get the same
+// decisions; in Macro with Unique stereo each rolls its own dice (brief §3.6).
+// A jump (new window, slice change, reset) that lands mid-slice hands the old head to a short fade-out
 // tail, so only windowing 0 cuts hard.
 
 #include "dsp/Clock.h"
+#include "dsp/MacroBreak.h"
 #include "dsp/Playhead.h"
 #include "dsp/RecordBuffer.h"
+#include "dsp/Rng.h"
 #include "dsp/Window.h"
 
 #include <array>
@@ -21,6 +25,7 @@ namespace fault::dsp
 {
 enum class FreezeMode { latching = 0, momentary = 1 };
 enum class Mode { macro = 0, micro = 1 };
+enum class StereoMode { unique = 0, shared = 1 };
 
 struct EngineParams
 {
@@ -34,11 +39,14 @@ struct EngineParams
     float width = 0.5f;       // 0..1: 0 mono, 0.5 as is, 1 side x2
     // Stage 2: Micro mode. The Bend / Break toggles are stored per mode (brief §3.7).
     Mode mode = Mode::macro;
-    float bend = 0.5f;        // Micro: speed -3 .. +3 octaves (0.5 = 1x)
-    float brk = 0.0f;         // Micro: Traverse slice index, or Silence duty 0 .. 90%
-    bool bendOnMacro = false, bendOnMicro = false;     // Micro: reverse
-    bool breakOnMacro = false, breakOnMicro = false;   // Micro: false = Traverse, true = Silence
+    float bend = 0.5f;        // Micro: speed -3 .. +3 octaves (0.5 = 1x). Macro: zones
+    float brk = 0.0f;         // Micro: Traverse slice index, or Silence duty 0 .. 90%. Macro: zones
+    bool bendOnMacro = false, bendOnMicro = false;     // Macro: Bend on. Micro: reverse
+    bool breakOnMacro = false, breakOnMicro = false;   // Macro: Break on. Micro: false = Traverse, true = Silence
     bool noteToSpeed = false; // MIDI note pitch sets the speed (C3 = 60 = 1x), on top of Bend
+    // Stage 3: Macro mode.
+    StereoMode stereo = StereoMode::unique;
+    int seed = 0;             // 0: the session seed, dice never repeat. Otherwise reproducible (keyed on tick index)
 };
 
 // A MIDI note for the engine, at a sample offset in the next process() block.
@@ -52,19 +60,37 @@ struct NoteEvent
 struct TickEvent
 {
     int64_t sample = 0;        // absolute output sample
+    int64_t index = 0;         // the clock's tick index (grid position when host-synced)
     double windowStart = 0.0, windowLength = 0.0, period = 0.0;
-    int repeats = 1;
+    int repeats = 1;           // the Repeats knob
     bool frozen = false;
+    // Per voice (L, R): what the dice decided.
+    std::array<float, 2> speed { 1.0f, 1.0f };      // starting speed (signed)
+    std::array<float, 2> octaves { 0.0f, 0.0f };    // target, for slews
+    std::array<int, 2> pieces { 1, 1 };             // window cut into this many slices
+    std::array<int, 2> slice { 0, 0 };
+    std::array<float, 2> duty { 0.0f, 0.0f };
+    std::array<uint8_t, 2> bendMask { 0, 0 };       // bit per BendOption
+    std::array<uint8_t, 2> breakMask { 0, 0 };      // bit per BreakOption
 };
 
 class Engine
 {
 public:
+    Engine();
     void prepare (double sampleRate, int maxBlock);   // allocates: message thread only
     void reset() noexcept;
     void setParams (const EngineParams& p) noexcept;
     void setTransport (const HostTransport& t) noexcept { transport_ = t; }   // once per block
     void triggerReset() noexcept { resetRequested_ = true; }
+    // The seed Macro mode uses when the seed parameter is 0 (the plug-in picks one per session).
+    void setSessionSeed (uint64_t s) noexcept { sessionSeed_ = s; reseed(); }
+
+    // Macro tables, from any thread: copied in, taken up at the start of the next block. Returns false
+    // (and changes nothing) if the previous set hasn't been taken up yet; try again later.
+    bool setTables (const MacroTables& t) noexcept;
+    const MacroTables& tables() const noexcept { return tables_; }   // audio thread / offline only
+
     // Notes for the next process() call, offsets ascending (up to kMaxNotes; extra ones are dropped).
     static constexpr int kMaxNotes = 512;
     void queueNote (const NoteEvent& e) noexcept { if (numNotes_ < kMaxNotes) notes_[(size_t) numNotes_++] = e; }
@@ -79,11 +105,12 @@ public:
     uint64_t ticksWritten() const noexcept { return tickCount_.load (std::memory_order_acquire); }
     const TickEvent& tick (uint64_t index) const noexcept { return ticks_[(size_t) (index % kTickRing)]; }
 
-    const Window& window() const noexcept { return win_; }
+    const Window& window (int channel = 0) const noexcept { return voices_[(size_t) (channel & 1)].win; }
     // UI state (read on the UI thread; plain values written once per block).
     struct Status
     {
-        std::atomic<float> speed { 1.0f };          // signed playback ratio
+        std::atomic<float> speed { 1.0f };          // signed playback ratio (left voice)
+        std::atomic<float> speedR { 1.0f };         // right voice
         std::atomic<bool> onOctave { true };        // Micro Bend sits on an exact octave (±5 cents)
         std::atomic<int> slice { 0 };
         std::atomic<uint32_t> sliceChanges { 0 };   // Traverse moved to another slice
@@ -96,29 +123,46 @@ public:
     int64_t samplesProcessed() const noexcept { return processed_; }
 
 private:
-    void onTick() noexcept;
-    void jump (const Window& next) noexcept;   // switch the main head, fading out the old one
-    float mainGain() const noexcept;
-    void readHead (const Window& w, const Playhead& h, float& l, float& r) const noexcept;
-    void spawnTail (double fadeDuration) noexcept;        // hand the main head to the fade-out tail
-    void fadeInHead() noexcept;                          // after a mid-slice jump
+    // One channel's read head(s) and Macro state.
+    struct Voice
+    {
+        Window win;              // the main head's window / slice
+        Playhead head;
+        Window tailWin;          // the head being faded out after a jump
+        Playhead tailHead;
+        double tailLeft = 0.0, tailLen = 0.0, jumpFadeLen = 1.0;
+        float tailGain0 = 1.0f;
+        int baseRepeats = 1;     // the Repeats knob this window was cut with
+        int pieces = 1;          // Macro Break: extra cuts per slice
+        double duty = 0.0;       // Macro Break silence
+        // Macro Bend speed: octaves gliding to a target, a direction, or a tape stop.
+        double oct = 0.0, target = 0.0, glideCoef = 1.0, dir = 1.0;
+        double stopLen = 0.0, stopPos = 0.0;
+        // Vinyl click (Bend's everything zone).
+        double clickPos = 0.0, clickLen = 0.0;
+        float clickGain = 0.0f;
+    };
+
+    void onTick (int64_t tickIndex) noexcept;
+    void jump (Voice& v, const Window& next) noexcept;   // switch the main head, fading out the old one
+    float mainGain (const Voice& v) const noexcept;
+    void spawnTail (Voice& v, double fadeDuration) noexcept;   // hand the main head to the fade-out tail
+    void fadeInHead (Voice& v) noexcept;                      // after a mid-slice jump
     void handleNote (const NoteEvent& e) noexcept;
-    void updateSpeed() noexcept;                         // per sample: Bend / note / reverse -> head speed
+    void updateSpeed() noexcept;                              // per sample: Bend / note / reverse -> head speed
+    double macroSpeed (Voice& v) noexcept;
+    void resetMacroVoice (Voice& v) noexcept;
     int traverseSlice (int repeats) const noexcept;
-    float silenceGain() const noexcept;
+    float silenceGain (const Voice& v) const noexcept;
+    void reseed() noexcept;
+    Pcg32 tickRng (int stream, int64_t tickIndex) noexcept;
 
     double sr_ = 48000.0;
     EngineParams p_;
     HostTransport transport_;
     RecordBuffer buf_;
     Clock clock_;
-
-    Window win_;            // the main head's window / slice
-    Playhead head_;
-    Window tailWin_;        // the head being faded out after a jump
-    Playhead tailHead_;
-    double tailLeft_ = 0.0, tailLen_ = 0.0, jumpFadeLen_ = 1.0;
-    float tailGain0_ = 1.0f;
+    std::array<Voice, 2> voices_ {};
     int pendingRepeats_ = 1;
 
     bool freezeWanted_ = false, forceWet_ = false, resetRequested_ = false;
@@ -138,6 +182,14 @@ private:
     Status status_;
     uint32_t sliceChanges_ = 0;
 
+    // Stage 3. Streams: Bend L/R, Break L/R.
+    enum { kBendStream = 0, kBreakStream = 2, kNumStreams = 4 };
+    MacroTables tables_, pendingTables_;
+    std::atomic<bool> tablesPending_ { false };
+    std::array<Pcg32, kNumStreams> rngs_ {};
+    uint64_t sessionSeed_ = 0x5eed;
+    int lastSeed_ = 0;
+
     std::array<TickEvent, kTickRing> ticks_ {};
     std::atomic<uint64_t> tickCount_ { 0 };
 };
@@ -150,6 +202,7 @@ typedef struct fault_engine fault_engine;
 fault_engine* fault_create (double sampleRate, int maxBlock);
 void fault_destroy (fault_engine*);
 void fault_set_params (fault_engine*, float time, int repeats, float mix, int freeze, int clockSource, float windowing, float width);
+void fault_set_macro (fault_engine*, int mode, float bend, float brk, int bendOn, int breakOn, int stereoShared, int seed);
 void fault_set_transport (fault_engine*, int playing, double bpm, double ppq);
 void fault_process (fault_engine*, const float* inL, const float* inR, float* outL, float* outR, int n);
 }

@@ -49,10 +49,17 @@ juce_add_plugin(Fault
 add_library(fault_plugin_code INTERFACE)
 target_sources(fault_plugin_code INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/PluginProcessor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/PluginEditor.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/PluginEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/TablesJson.cpp)
 target_include_directories(fault_plugin_code INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/source)
 target_compile_definitions(fault_plugin_code INTERFACE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(fault_plugin_code INTERFACE fault_dsp juce::juce_audio_utils)
+# Dev builds watch tuning/macro_tables.json and hot-reload it (brief §3.6). Release builds turn this off
+# and use the baked tables (fault-render --bake-tables).
+option(FAULT_DEV_TABLES "Plug-in hot-reloads tuning/macro_tables.json" ON)
+if(FAULT_DEV_TABLES)
+    target_compile_definitions(fault_plugin_code INTERFACE FAULT_TABLES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tuning/macro_tables.json")
+endif()
 
 target_link_libraries(Fault PRIVATE fault_plugin_code PUBLIC
     juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)

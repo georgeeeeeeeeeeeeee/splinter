@@ -2,14 +2,24 @@
 
 A circuit-bent digital buffer effect (AU + VST3). It records audio into a long stereo buffer and, on every clock tick, plays a window of it back broken: stutters, reverse, varispeed, tape stops, skips, dropouts, then bitcrush, saturation, filter and vinyl. An original product.
 
-Status: **Stage 2**, Micro mode. On top of the Stage 1 buffer core: Bend as speed (±3 octaves) with reverse, MIDI note pitch as speed (in tune within 2 cents), Traverse and Silence, and per-mode toggles. The UI is a debug panel.
+Status: **Stage 3**, Macro mode. On top of the buffer core (Stage 1) and Micro mode (Stage 2): per-tick dice for Bend (reverse, octaves, slew, tape stop) and Break (halve, jump, subdivide, audio-rate repeats, silence), Unique / Shared stereo, a seed, and tunable Macro tables. The UI is a debug panel.
 
 ```
 build/tests/fault_tests                       # unit tests
 python3 tools/make_fixtures.py [voice.wav]    # test material (needs numpy, scipy)
-scripts/checkpoint1.sh, checkpoint2.sh   (or .ps1)   # renders: build/renders/stage1, stage2
+scripts/checkpoint1.sh, checkpoint2.sh, checkpoint3.sh   (or .ps1)   # renders: build/renders/stage1..3
 python3 tools/check_pitch.py build/renders/stage2/tone-chromatic.wav tools/render/stage2/tone-chromatic.json
 ```
+
+## Tuning Macro mode
+
+Every chance, zone boundary and range Macro mode uses is in `tuning/macro_tables.json` (each key is explained in its `_notes`).
+
+- **By render:** edit the file, run `scripts/checkpoint3.sh` (or `.\scripts\checkpoint3.ps1`), and listen to `build/renders/stage3`. The whole grid takes about 4 s. A filter re-renders part of it, e.g. `scripts/checkpoint3.sh break-4`. Each PNG labels what the dice did on every tick (Bend in amber, Break in violet, silence in red), and the `.csv` beside it lists every decision.
+- **Live:** dev builds of the plug-in (the default, `FAULT_DEV_TABLES=ON`) watch the file and reload it within half a second of a save. The debug panel shows when it was loaded, or what's wrong with it.
+- **Compile it in** when it's right: `fault-render --bake-tables tuning/macro_tables.json` writes `source/dsp/MacroTablesBaked.inc`. Release builds use only that.
+
+The grid's knob positions are given as zone + position, so moving a zone boundary moves the renders with it. Set Seed to anything but 0 for repeatable dice: with the host clock, a given bar then always glitches the same way.
 
 ## Install (unsigned build)
 

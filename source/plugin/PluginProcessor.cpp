@@ -1,6 +1,7 @@
 #include "plugin/PluginProcessor.h"
 #include "plugin/PluginEditor.h"
 #include "dsp/Params.h"
+#include "plugin/TablesJson.h"
 
 namespace fault
 {
@@ -61,6 +62,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
     toggle (params::breakOnMacroId, "Break On (Macro)");
     toggle (params::breakOnMicroId, "Break Silence (Micro)");
     toggle (params::noteToSpeedId, "Note to Speed");
+
+    l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { toJuce (params::stereoModeId), 1 }, "Stereo",
+                                                         names ({ params::kStereoModes[0], params::kStereoModes[1] }), 0));
+    l.add (std::make_unique<juce::AudioParameterInt> (juce::ParameterID { toJuce (params::seedId), 1 }, "Seed", 0, params::kMaxSeed, 0,
+                                                      juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int v, int) {
+                                                          return v == 0 ? juce::String ("Random") : juce::String (v);
+                                                      })));
     return l;
 }
 } // namespace
@@ -74,9 +82,42 @@ FaultProcessor::FaultProcessor()
     raw = { get (params::time.id), get (params::repeats.id), get (params::mix.id), get (params::windowing.id), get (params::width.id),
             get (params::freezeId), get (params::resetId), get (params::clockSourceId), get (params::freezeButtonModeId),
             get (params::modeId), get (params::bendId), get (params::breakId), get (params::bendOnMacroId), get (params::bendOnMicroId),
-            get (params::breakOnMacroId), get (params::breakOnMicroId), get (params::noteToSpeedId) };
+            get (params::breakOnMacroId), get (params::breakOnMicroId), get (params::noteToSpeedId),
+            get (params::stereoModeId), get (params::seedId) };
+    // Seed 0: a fresh seed each session, so the dice never repeat between sessions.
+    engine_.setSessionSeed ((uint64_t) juce::Random::getSystemRandom().nextInt64() ^ (uint64_t) juce::Time::getHighResolutionTicks());
     engine_.setParams (readParams());
     engine_.prepare (48000.0, 512);   // playable even before prepareToPlay; re-prepared there
+#ifdef FAULT_TABLES_PATH
+    tablesFile_ = juce::File (FAULT_TABLES_PATH);
+    tablesStatus_ = "Macro tables: watching " + tablesFile_.getFullPathName();
+    timerCallback();
+    startTimer (400);
+#endif
+}
+
+void FaultProcessor::timerCallback()
+{
+    // Dev builds: reload the tables when the file's saved, and hand them to the engine (lock-free; if
+    // the engine hasn't taken the previous set yet, try again next time).
+    if (tablesWaiting_.has_value() && engine_.setTables (*tablesWaiting_))
+        tablesWaiting_.reset();
+    if (! tablesFile_.existsAsFile())
+        return;
+    const auto t = tablesFile_.getLastModificationTime();
+    if (t == tablesTime_)
+        return;
+    tablesTime_ = t;
+    auto tables = dsp::MacroTables::defaults();
+    juce::String err;
+    if (! tablesFromJson (tablesFile_.loadFileAsString(), tables, err))
+    {
+        tablesStatus_ = "Macro tables: " + err + " (kept the previous ones)";
+        return;
+    }
+    if (! engine_.setTables (tables))
+        tablesWaiting_ = tables;
+    tablesStatus_ = "Macro tables: loaded " + juce::Time::getCurrentTime().toString (false, true, true, true) + " from " + tablesFile_.getFileName();
 }
 
 dsp::EngineParams FaultProcessor::readParams() const noexcept
@@ -99,6 +140,8 @@ dsp::EngineParams FaultProcessor::readParams() const noexcept
     p.breakOnMacro = raw.breakOnMacro->load() > 0.5f;
     p.breakOnMicro = raw.breakOnMicro->load() > 0.5f;
     p.noteToSpeed = raw.noteToSpeed->load() > 0.5f;
+    p.stereo = raw.stereo->load() > 0.5f ? dsp::StereoMode::shared : dsp::StereoMode::unique;
+    p.seed = (int) std::lround (raw.seed->load());
     return p;
 }
 

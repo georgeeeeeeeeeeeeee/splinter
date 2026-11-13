@@ -38,6 +38,9 @@ public:
     // Ticks in this block, ascending sample offsets.
     int numTicks() const noexcept { return numTicks_; }
     int tickAt (int i) const noexcept { return ticks_[(size_t) i]; }
+    // The tick's index: its grid position k (tick at beat k / rate) while the host plays, else a count
+    // since the last reset / resync. Macro mode keys its dice on this when the seed is fixed.
+    int64_t tickIndex (int i) const noexcept { return index_[(size_t) i]; }
 
     double periodSamples() const noexcept { return period_; }   // current period
     int step() const noexcept { return step_; }
@@ -45,7 +48,7 @@ public:
     void resync() noexcept { resync_ = true; }                       // Reset: next pulse / now (internal)
 
 private:
-    void addTick (int offset) noexcept;
+    void addTick (int offset, int64_t index) noexcept;
 
     double sr_ = 48000.0, phase_ = 0.0, period_ = 48000.0, lastPpqEnd_ = -1.0;
     float time_ = 0.5f;
@@ -55,6 +58,8 @@ private:
     uint32_t stepChanges_ = 0;
     static constexpr int kMaxTicks = 4096;
     std::array<int, kMaxTicks> ticks_ {};
+    std::array<int64_t, kMaxTicks> index_ {};
+    int64_t freeCount_ = 0;
     int numTicks_ = 0;
 };
 } // namespace fault::dsp

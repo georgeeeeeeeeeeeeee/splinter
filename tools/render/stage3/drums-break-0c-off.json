@@ -1,0 +1,21 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "mix": 1.0,
+ "mode": "macro",
+ "block": "random",
+ "seed": 1,
+ "stereo": "unique",
+ "length": 10.0,
+ "tail": 0.5,
+ "time": 0.5,
+ "repeats": 4,
+ "bendOnMacro": false,
+ "breakOnMacro": true,
+ "breakZone": 0,
+ "breakZonePos": 0.9,
+ "bend": 0
+}

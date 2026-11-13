@@ -38,6 +38,28 @@ float RecordBuffer::at (const std::vector<float>& ch, int64_t i) const noexcept
     return ch[(size_t) (i % cap_)];
 }
 
+namespace
+{
+inline float hermite (float t, float y0, float y1, float y2, float y3) noexcept
+{
+    const float c1 = 0.5f * (y2 - y0);
+    const float c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
+    const float c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
+    return ((c3 * t + c2) * t + c1) * t + y1;
+}
+} // namespace
+
+float RecordBuffer::read (int channel, double pos) const noexcept
+{
+    const auto& ch = channel == 0 ? l_ : r_;
+    const double fl = std::floor (pos);
+    const auto i = (int64_t) fl;
+    const float t = (float) (pos - fl);
+    if (t == 0.0f)
+        return at (ch, i);
+    return hermite (t, at (ch, i - 1), at (ch, i), at (ch, i + 1), at (ch, i + 2));
+}
+
 void RecordBuffer::read (double pos, float& l, float& r) const noexcept
 {
     const double fl = std::floor (pos);
@@ -49,13 +71,7 @@ void RecordBuffer::read (double pos, float& l, float& r) const noexcept
         r = at (r_, i);
         return;
     }
-    const auto hermite = [t] (float y0, float y1, float y2, float y3) {
-        const float c1 = 0.5f * (y2 - y0);
-        const float c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
-        const float c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
-        return ((c3 * t + c2) * t + c1) * t + y1;
-    };
-    l = hermite (at (l_, i - 1), at (l_, i), at (l_, i + 1), at (l_, i + 2));
-    r = hermite (at (r_, i - 1), at (r_, i), at (r_, i + 1), at (r_, i + 2));
+    l = hermite (t, at (l_, i - 1), at (l_, i), at (l_, i + 1), at (l_, i + 2));
+    r = hermite (t, at (r_, i - 1), at (r_, i), at (r_, i + 1), at (r_, i + 2));
 }
 } // namespace fault::dsp
