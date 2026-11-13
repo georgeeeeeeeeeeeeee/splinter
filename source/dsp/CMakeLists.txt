@@ -7,6 +7,7 @@ add_library(fault_dsp STATIC
     MacroBend.cpp
     MacroBreak.cpp
     Corrupt/Corrupt.cpp
+    Modulation.cpp
     Engine.cpp)
 target_include_directories(fault_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_features(fault_dsp PUBLIC cxx_std_20)

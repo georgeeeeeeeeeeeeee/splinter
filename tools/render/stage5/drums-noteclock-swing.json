@@ -1,0 +1,137 @@
+{
+ "clock": "note",
+ "tempo": {
+  "bpm": 120.0,
+  "playing": true
+ },
+ "mix": 1.0,
+ "mode": "macro",
+ "block": "random",
+ "seed": 3,
+ "tail": 0.5,
+ "time": 0.625,
+ "repeats": 2,
+ "length": 10.0,
+ "midi": [
+  {
+   "time": 0.25,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 0.3,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 0.61,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 0.66,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 0.85,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 0.9,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 1.21,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 1.26,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 1.45,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 1.5,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 1.81,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 1.86,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 2.05,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 2.0999999999999996,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 2.4099999999999997,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 2.4599999999999995,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 2.6499999999999995,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 2.6999999999999993,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 3.0099999999999993,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 3.059999999999999,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 3.249999999999999,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 3.299999999999999,
+   "gate": "clock",
+   "on": false
+  },
+  {
+   "time": 3.609999999999999,
+   "gate": "clock",
+   "on": true
+  },
+  {
+   "time": 3.659999999999999,
+   "gate": "clock",
+   "on": false
+  }
+ ]
+}

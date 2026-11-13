@@ -29,6 +29,8 @@ void Engine::prepare (double sampleRate, int)
     buf_.prepare (sampleRate);
     clock_.prepare (sampleRate);
     corrupt_.prepare (sampleRate);
+    env_.prepare (sampleRate);
+    ccCoef_ = 1.0 - std::exp (-(double) kControlSamples / (0.01 * sampleRate));   // CC lanes: 10 ms smoothing
     smoothLen_ = std::max (1, (int) (0.02 * sampleRate));
     octCoef_ = 1.0 - std::exp (-1.0 / (0.02 * sampleRate));   // Bend knob glide, 20 ms
     reset();
@@ -62,6 +64,15 @@ void Engine::reset() noexcept
     reseed();
     corrupt_.setParams (p_.corrupt, p_.corruptType, p_.corruptSet);
     corrupt_.reset();
+    for (auto& m : mods_) m.reset();
+    env_.reset();
+    env_.setParams (base_.mod.env);
+    ccTarget_.fill (0.0f);
+    ccValue_.fill (0.0f);
+    sources_.fill (0.0f);
+    offsets_ = {};
+    clearGateState();
+    lastPlaying_ = -1;
     tickCount_.store (0, std::memory_order_release);
 }
 
@@ -71,6 +82,18 @@ void Engine::reseed() noexcept
         rngs_[(size_t) s].seed (mix64 (sessionSeed_ + (uint64_t) s * 0x632be59bd9b4e019ULL), (uint64_t) s + 1);
     // Corrupt's randomness (Dropout, Vinyl, Decimate's jitter) follows the seed too.
     corrupt_.reseed (p_.seed != 0 ? mix64 ((uint64_t) (uint32_t) p_.seed * 0x9e3779b97f4a7c15ULL) : mix64 (sessionSeed_ ^ 0xc0ffee));
+    // The random shapes too: a fixed seed gives the same values at the same bar positions.
+    const uint64_t ms = p_.seed != 0 ? mix64 ((uint64_t) (uint32_t) p_.seed * 0x9e3779b97f4a7c15ULL ^ 0x30d) : mix64 (sessionSeed_ ^ 0x30d);
+    for (int m = 0; m < kNumModulators; ++m)
+        mods_[(size_t) m].reseed (mix64 (ms + (uint64_t) m));
+}
+
+void Engine::clearGateState() noexcept
+{
+    freezeFlip_ = false;
+    bendFlip_ = { false, false };
+    breakFlip_ = { false, false };
+    corruptSteps_ = 0;
 }
 
 Pcg32 Engine::tickRng (int stream, int64_t tickIndex) noexcept
@@ -92,23 +115,59 @@ bool Engine::setTables (const MacroTables& t) noexcept
 
 void Engine::setParams (const EngineParams& p) noexcept
 {
-    p_ = p;
-    clock_.setSource (p.clock);
-    clock_.setTime (p.time);
-    pendingRepeats_ = std::clamp (p.repeats, 1, 32);
-    freezeWanted_ = p.freeze;
-    if (p.seed != lastSeed_)
+    base_ = p;
+    if (p.gateMode != lastGateMode_)
     {
-        lastSeed_ = p.seed;
+        lastGateMode_ = p.gateMode;
+        clearGateState();   // a held momentary gate must not stick when the mode changes
+    }
+    env_.setParams (p.mod.env);
+    applyEffective();
+}
+
+void Engine::applyEffective() noexcept
+{
+    // Knobs + modulation offsets (clamped), then the gates' flips. Never written back to base_.
+    const auto& o = offsets_.d;
+    const auto unit = [] (float x) { return std::isfinite (x) ? std::clamp (x, 0.0f, 1.0f) : 0.0f; };
+    EngineParams e = base_;
+    e.time = unit (base_.time + o[(size_t) ModDest::time]);
+    if (o[(size_t) ModDest::repeats] != 0.0f)
+    {
+        // Repeats on its exponential knob: 32^x.
+        const float x = unit (std::log ((float) std::clamp (base_.repeats, 1, 32)) / std::log (32.0f) + o[(size_t) ModDest::repeats]);
+        e.repeats = std::clamp ((int) std::lround (std::pow (32.0f, x)), 1, 32);
+    }
+    e.mix = unit (base_.mix + o[(size_t) ModDest::mix]);
+    e.bend = unit (base_.bend + o[(size_t) ModDest::bend]);
+    e.brk = unit (base_.brk + o[(size_t) ModDest::brk]);
+    e.corrupt = unit (base_.corrupt + o[(size_t) ModDest::corrupt]);
+    e.freeze = base_.freeze != freezeFlip_;
+    e.bendOnMacro = base_.bendOnMacro != bendFlip_[0];
+    e.bendOnMicro = base_.bendOnMicro != bendFlip_[1];
+    e.breakOnMacro = base_.breakOnMacro != breakFlip_[0];
+    e.breakOnMicro = base_.breakOnMicro != breakFlip_[1];
+    const int setSize = base_.corruptSet == CorruptSet::original3 ? 3 : kNumCorruptTypes;
+    for (int k = ((corruptSteps_ % setSize) + setSize) % setSize; k > 0; --k)
+        e.corruptType = Corrupt::nextType (e.corruptType, e.corruptSet);
+    p_ = e;
+
+    clock_.setSource (p_.clock);
+    clock_.setTime (p_.time);
+    pendingRepeats_ = std::clamp (p_.repeats, 1, 32);
+    freezeWanted_ = p_.freeze;
+    if (p_.seed != lastSeed_)
+    {
+        lastSeed_ = p_.seed;
         reseed();
     }
-    corrupt_.setParams (p.corrupt, p.corruptType, p.corruptSet);
-    if (p.freezeMode == FreezeMode::momentary && buf_.frozen() != p.freeze)
+    corrupt_.setParams (p_.corrupt, p_.corruptType, p_.corruptSet);
+    if (p_.freezeMode == FreezeMode::momentary && buf_.frozen() != p_.freeze)
     {
-        buf_.setFrozen (p.freeze);
-        forceWet_ = p.freeze && p.mix < 0.001f;
+        buf_.setFrozen (p_.freeze);
+        forceWet_ = p_.freeze && base_.mix < 0.001f;
     }
-    const float mt = std::clamp (p.mix, 0.0f, 1.0f), wt = std::clamp (p.width, 0.0f, 1.0f);
+    const float mt = p_.mix, wt = std::clamp (p_.width, 0.0f, 1.0f);
     if (mt != mixTarget_ || wt != widthTarget_)
     {
         mixTarget_ = mt;
@@ -117,6 +176,24 @@ void Engine::setParams (const EngineParams& p) noexcept
         widthStep_ = (widthTarget_ - width_) / (float) smoothLen_;
         smoothLeft_ = smoothLen_;
     }
+}
+
+void Engine::updateModulation (int offsetInBlock) noexcept
+{
+    const bool playing = transport_.valid && transport_.playing;
+    const double bpm = transport_.valid && transport_.bpm > 1.0 ? transport_.bpm : 120.0;
+    const ModClock mc { playing, bpm, transport_.ppq + (double) offsetInBlock * bpm / 60.0 / sr_ };
+    for (int m = 0; m < kNumModulators; ++m)
+        sources_[(size_t) ModSource::mod1 + (size_t) m] = mods_[(size_t) m].next (base_.mod.mods[(size_t) m], mc, sr_, kControlSamples);
+    sources_[(size_t) ModSource::env] = env_.value();
+    for (int c = 0; c < kNumCcLanes; ++c)
+    {
+        auto& v = ccValue_[(size_t) c];
+        v += (ccTarget_[(size_t) c] - v) * (float) ccCoef_;
+        if (std::abs (ccTarget_[(size_t) c] - v) < 1.0e-5f) v = ccTarget_[(size_t) c];
+        sources_[(size_t) ModSource::cc1 + (size_t) c] = base_.mod.ccBipolar[(size_t) c] ? 2.0f * v - 1.0f : v;
+    }
+    offsets_ = computeOffsets (base_.mod, sources_, base_.mode == Mode::micro);
 }
 
 float Engine::mainGain (const Voice& v) const noexcept
@@ -168,15 +245,55 @@ void Engine::jump (Voice& v, const Window& next) noexcept
     v.head.fadeIn = 1.0e30;   // starts at the slice edge: the edge envelope fades it in
 }
 
-void Engine::handleNote (const NoteEvent& e) noexcept
+bool Engine::handleNote (const NoteEvent& e) noexcept
 {
-    if (std::find (gateNotes_.begin(), gateNotes_.end(), e.note) != gateNotes_.end())
-        return;   // gate notes (Stage 5) never set the pitch
-    if (e.on && e.velocity > 0)
+    if (e.cc)
     {
-        pitchNote_ = e.note;   // last note wins; the pitch holds after note-off, like a CV
-        hasPitch_ = true;
+        for (int c = 0; c < kNumCcLanes; ++c)
+            if (base_.mod.ccNumbers[(size_t) c] == e.note)
+                ccTarget_[(size_t) c] = (float) std::clamp (e.velocity, 0, 127) / 127.0f;
+        return false;
     }
+    const bool on = e.on && e.velocity > 0;
+    const auto it = std::find (gateNotes_.begin(), gateNotes_.end(), e.note);
+    if (it == gateNotes_.end())
+    {
+        if (on)
+        {
+            pitchNote_ = e.note;   // last note wins; the pitch holds after note-off, like a CV
+            hasPitch_ = true;
+        }
+        return false;
+    }
+    // A gate (never a pitch). Latching: each note-on flips the state. Momentary: flipped while held.
+    const bool momentary = base_.gateMode == GateMode::momentary;
+    const auto flip = [&] (bool& f) {
+        if (momentary) f = on;
+        else if (on) f = ! f;
+    };
+    const size_t modeIdx = base_.mode == Mode::micro ? 1 : 0;
+    bool pulse = false;
+    switch ((int) (it - gateNotes_.begin()))
+    {
+        case gateFreeze: flip (freezeFlip_); break;
+        case gateBend: flip (bendFlip_[modeIdx]); break;
+        case gateBreak: flip (breakFlip_[modeIdx]); break;
+        case gateCorrupt:
+            if (base_.corruptAsReset)
+            {
+                if (on) clock_.resync();
+            }
+            else if (on) ++corruptSteps_;            // the next type in the set
+            else if (momentary) --corruptSteps_;     // momentary: back on release
+            break;
+        case gateReset:
+            if (on) clock_.resync();
+            break;
+        case gateClock: pulse = on && p_.clock == ClockSource::note; break;
+        default: break;
+    }
+    applyEffective();
+    return pulse;
 }
 
 int Engine::traverseSlice (int repeats) const noexcept
@@ -269,6 +386,22 @@ void Engine::updateSpeed() noexcept
 
 void Engine::onTick (int64_t tickIndex) noexcept
 {
+    // Synced modulators are re-read at the tick's own beat position, so a synced S&H on Repeats changes
+    // exactly with the tick (the control grid alone could be up to 31 samples late).
+    if (transport_.valid && transport_.playing)
+    {
+        bool any = false;
+        for (const auto& m : base_.mod.mods) any = any || m.sync >= 0;
+        if (any)
+        {
+            const double bpm = transport_.bpm > 1.0 ? transport_.bpm : 120.0;
+            const ModClock mc { true, bpm, transport_.ppq + (double) (curSample_ - processed_) * bpm / 60.0 / sr_ };
+            for (int m = 0; m < kNumModulators; ++m)
+                sources_[(size_t) ModSource::mod1 + (size_t) m] = mods_[(size_t) m].at (base_.mod.mods[(size_t) m], mc);
+            offsets_ = computeOffsets (base_.mod, sources_, base_.mode == Mode::micro);
+            applyEffective();
+        }
+    }
     // Latching freeze engages / releases on the tick (brief §3.10); momentary acts at once in setParams.
     if (p_.freezeMode == FreezeMode::latching && buf_.frozen() != freezeWanted_)
     {
@@ -374,34 +507,22 @@ void Engine::onTick (int64_t tickIndex) noexcept
     tickCount_.store (k + 1, std::memory_order_release);
 }
 
-void Engine::process (const float* inL, const float* inR, float* outL, float* outR, int n) noexcept
+void Engine::renderSegment (const float* inL, const float* inR, float* outL, float* outR, int from, int to) noexcept
 {
-    if (tablesPending_.load (std::memory_order_acquire))
-    {
-        tables_ = pendingTables_;
-        tablesPending_.store (false, std::memory_order_release);
-    }
-    if (resetRequested_)
-    {
-        resetRequested_ = false;
-        clock_.resync();
-    }
-    clock_.beginBlock (transport_, n);
-    int nextTick = 0, nextNote = 0;
+    // One stretch with no events inside and one clock block (tick offsets relative to `from`).
+    int nextTick = 0;
     const int numTicks = clock_.numTicks();
     const double clickW = 2.0 * std::numbers::pi * 2800.0 / sr_;
-
-    for (int i = 0; i < n; ++i)
+    for (int i = from; i < to; ++i)
     {
         const float xl = std::isfinite (inL[i]) ? inL[i] : 0.0f;
         const float xr = std::isfinite (inR[i]) ? inR[i] : 0.0f;
         // A tick captures the most recent `period` samples up to (not including) this one, then this
         // sample is recorded: the playhead's first read is exactly one period back.
         curSample_ = processed_ + i;
-        while (nextNote < numNotes_ && notes_[(size_t) nextNote].offset <= i)
-            handleNote (notes_[(size_t) nextNote++]);
+        env_.process (xl, xr);
         updateSpeed();
-        while (nextTick < numTicks && clock_.tickAt (nextTick) == i)
+        while (nextTick < numTicks && clock_.tickAt (nextTick) + from == i)
         {
             onTick (clock_.tickIndex (nextTick));
             ++nextTick;
@@ -416,11 +537,11 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
             // in the slice, like a CD skipping), faded like any jump.
             if (v.win.valid() && p_.mode == Mode::micro && ! p_.breakOnMicro)
             {
-                const int s = traverseSlice (v.win.repeats);
-                if (s != v.win.slice)
+                const int sl = traverseSlice (v.win.repeats);
+                if (sl != v.win.slice)
                 {
                     spawnTail (v, v.head.duration (v.win.sliceLength()));
-                    v.win.slice = s;
+                    v.win.slice = sl;
                     fadeInHead (v);
                     if (ch == 0)
                         ++sliceChanges_;
@@ -479,6 +600,62 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
         outL[i] = sanitise (xl * dry + wl * wetG);
         outR[i] = sanitise (xr * dry + wr * wetG);
     }
+}
+
+void Engine::process (const float* inL, const float* inR, float* outL, float* outR, int n) noexcept
+{
+    if (tablesPending_.load (std::memory_order_acquire))
+    {
+        tables_ = pendingTables_;
+        tablesPending_.store (false, std::memory_order_release);
+    }
+    if (clearGates_.exchange (false, std::memory_order_acq_rel))
+    {
+        clearGateState();
+        applyEffective();
+    }
+    if (resetRequested_)
+    {
+        resetRequested_ = false;
+        clock_.resync();
+    }
+    // A transport start (from a known stop) is a Reset too: back on the bar when host-synced, a new
+    // window at once on the internal clock, the division counter realigned on the note clock.
+    const bool playing = transport_.valid && transport_.playing;
+    if (lastPlaying_ == 0 && playing)
+    {
+        clock_.transportStarted();
+        if (p_.clock != ClockSource::host)
+            clock_.resync();
+    }
+    lastPlaying_ = playing ? 1 : 0;
+
+    // Segments: split at the control grid (absolute time, so block sizes don't matter) and at every
+    // MIDI event, so gates, resets and clock pulses land on their own sample.
+    const double bps = (transport_.valid && transport_.bpm > 1.0 ? transport_.bpm : 120.0) / 60.0 / sr_;
+    int nextNote = 0;
+    for (int i = 0; i < n;)
+    {
+        bool pulse = false;
+        while (nextNote < numNotes_ && notes_[(size_t) nextNote].offset <= i)
+            pulse = handleNote (notes_[(size_t) nextNote++]) || pulse;
+        const int64_t abs = processed_ + i;
+        const int intoGrid = (int) (abs % kControlSamples);
+        if (intoGrid == 0)
+        {
+            updateModulation (i);
+            applyEffective();
+        }
+        int end = std::min (n, i + kControlSamples - intoGrid);
+        if (nextNote < numNotes_)
+            end = std::min (end, std::max (i + 1, notes_[(size_t) nextNote].offset));
+        HostTransport t = transport_;
+        if (playing)
+            t.ppq += (double) i * bps;
+        clock_.beginBlock (t, end - i, pulse);
+        renderSegment (inL, inR, outL, outR, i, end);
+        i = end;
+    }
     processed_ += n;
     numNotes_ = 0;
     const double s = voices_[0].head.speed;
@@ -491,6 +668,18 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
     status_.silenceDuty.store (p_.mode == Mode::micro ? (p_.breakOnMicro ? 0.9f * std::clamp (p_.brk, 0.0f, 1.0f) : 0.0f) : (float) voices_[0].duty,
                                std::memory_order_relaxed);
     status_.corrupt.store (corrupt_.playing(), std::memory_order_relaxed);
+    status_.modulated[(size_t) ModDest::time].store (p_.time, std::memory_order_relaxed);
+    status_.modulated[(size_t) ModDest::repeats].store (std::log ((float) p_.repeats) / std::log (32.0f), std::memory_order_relaxed);
+    status_.modulated[(size_t) ModDest::mix].store (p_.mix, std::memory_order_relaxed);
+    status_.modulated[(size_t) ModDest::bend].store (p_.bend, std::memory_order_relaxed);
+    status_.modulated[(size_t) ModDest::brk].store (p_.brk, std::memory_order_relaxed);
+    status_.modulated[(size_t) ModDest::corrupt].store (p_.corrupt, std::memory_order_relaxed);
+    for (int k = 0; k < kNumModSources; ++k)
+        status_.sources[(size_t) k].store (sources_[(size_t) k], std::memory_order_relaxed);
+    status_.frozen.store (buf_.frozen(), std::memory_order_relaxed);
+    status_.bendOn.store (p_.mode == Mode::micro ? p_.bendOnMicro : p_.bendOnMacro, std::memory_order_relaxed);
+    status_.breakOn.store (p_.mode == Mode::micro ? p_.breakOnMicro : p_.breakOnMacro, std::memory_order_relaxed);
+    status_.corruptType.store ((int) p_.corruptType, std::memory_order_relaxed);
 }
 } // namespace fault::dsp
 

@@ -30,6 +30,13 @@ void Clock::reset() noexcept
     resync_ = false;
     numTicks_ = 0;
     freeCount_ = 0;
+    origin_ = 0.0;
+    now_ = 0;
+    lastPulse_ = -1;
+    interval_ = 0.0;
+    lastTick_ = 0.0;
+    pulseCount_ = subLeft_ = 0;
+    noteFree_ = false;
 }
 
 void Clock::addTick (int offset, int64_t index) noexcept
@@ -41,9 +48,77 @@ void Clock::addTick (int offset, int64_t index) noexcept
     }
 }
 
-void Clock::beginBlock (const HostTransport& t, int n) noexcept
+void Clock::noteBlock (const HostTransport& t, int n, bool pulse) noexcept
+{
+    // Rate as ticks per pulse: x1..x8 multiply, /2../16 divide.
+    const double rate = kRates[(size_t) std::max (0, step_)];
+    const int mult = rate >= 1.0 ? (int) std::lround (rate) : 1, div = rate < 1.0 ? (int) std::lround (1.0 / rate) : 1;
+    if (interval_ <= 0.0)   // no pulse yet: assume one a beat at the host tempo, for the window length
+        interval_ = sr_ * 60.0 / (t.valid && t.bpm > 1.0 ? t.bpm : 120.0);
+    period_ = interval_ * (double) div / (double) mult;
+    if (resync_)
+    {
+        resync_ = false;
+        pulseCount_ = 0;   // the next pulse ticks
+    }
+    for (int i = 0; i < n; ++i)
+    {
+        const int64_t s = now_ + i;
+        if (i == 0 && pulse)
+        {
+            if (lastPulse_ >= 0)
+                interval_ = std::max (16.0, (double) (s - lastPulse_));
+            lastPulse_ = s;
+            period_ = interval_ * (double) div / (double) mult;
+            noteFree_ = false;
+            if (pulseCount_ % div == 0)
+            {
+                addTick (i, freeCount_++);
+                lastTick_ = (double) s;
+                subLeft_ = mult - 1;
+            }
+            pulseCount_ = (pulseCount_ + 1) % div;
+            continue;
+        }
+        if (lastPulse_ < 0)
+            continue;
+        if (subLeft_ > 0 && (double) s >= lastTick_ + period_ - 1.0e-9)
+        {
+            // The multiplied ticks between pulses.
+            lastTick_ += period_;
+            --subLeft_;
+            addTick (i, freeCount_++);
+            continue;
+        }
+        if (! noteFree_ && (double) (s - lastPulse_) > 4.0 * interval_)
+        {
+            // No clock for four intervals: carry on at the last rate, on the same grid.
+            noteFree_ = true;
+            while (lastTick_ + period_ < (double) s - 1.0e-9) lastTick_ += period_;
+        }
+        if (noteFree_ && (double) s >= lastTick_ + period_ - 1.0e-9)
+        {
+            lastTick_ += period_;
+            addTick (i, freeCount_++);
+        }
+    }
+}
+
+void Clock::beginBlock (const HostTransport& t, int n, bool pulse) noexcept
 {
     numTicks_ = 0;
+    if (source_ == ClockSource::note)
+    {
+        const int s = hostStep (time_);
+        if (step_ >= 0 && s != step_)
+            ++stepChanges_;
+        step_ = s;
+        noteBlock (t, n, pulse);
+        now_ += n;
+        wasPlaying_ = false;
+        return;
+    }
+    now_ += n;
     const bool synced = source_ != ClockSource::internal;
     if (synced)
     {
@@ -63,11 +138,14 @@ void Clock::beginBlock (const HostTransport& t, int n) noexcept
         // included when it lands on the grid; a crossing exactly at the next block's first sample is
         // left to that block, so nothing ticks twice.
         const double bps = bpm / 60.0 / sr_;
-        const bool jumped = ! wasPlaying_ || resync_ || t.ppq < lastPpqEnd_ - 1.0e-6 || t.ppq > lastPpqEnd_ + 1.0e-3;
-        (void) jumped;   // grid ticks need no state: a start, loop or reset simply lands on the grid
-        for (auto k = (int64_t) std::ceil (t.ppq * rate - 1.0e-7);; ++k)
+        // Reset while playing realigns the division to the next beat (a start or loop simply lands on
+        // the grid; a transport start puts it back on the bar).
+        if (resync_)
+            origin_ = std::ceil (t.ppq - 1.0e-7);
+        const double rel = t.ppq - origin_;
+        for (auto k = (int64_t) std::ceil (rel * rate - 1.0e-7);; ++k)
         {
-            const int offset = (int) std::ceil (((double) k / rate - t.ppq) / bps - 1.0e-6);
+            const int offset = (int) std::ceil (((double) k / rate - rel) / bps - 1.0e-6);
             if (offset >= n)
                 break;
             addTick (std::max (0, offset), k);

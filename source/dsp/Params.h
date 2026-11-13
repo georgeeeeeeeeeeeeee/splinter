@@ -41,7 +41,23 @@ inline constexpr std::string_view corruptId = "corrupt", corruptTypeId = "corrup
 inline constexpr std::string_view kCorruptTypes[] = { "Decimate", "Dropout", "Destroy", "DJ Filter", "Vinyl" };
 inline constexpr std::string_view kCorruptSets[] = { "All", "Original 3" };
 
-inline constexpr int kStateVersion = 5;
+// Stage 5: modulation (brief §3.10). Per modulator n = 1..4: mod<n>Shape, mod<n>Rate (free, Hz),
+// mod<n>Sync ("Free" or a synced length), mod<n>Phase, mod<n>Polarity. Per route n = 1..8:
+// route<n>Source, route<n>Dest, route<n>Depth (-100..+100%). Per CC lane: cc<n>Polarity (the CC
+// numbers and gate notes are plug-in state, learnable, not parameters).
+inline constexpr std::string_view bendAttenId = "bendAtten", breakAttenId = "breakAtten", corruptAttenId = "corruptAtten";
+inline constexpr std::string_view gateModeId = "gateMode", corruptAsResetId = "corruptAsReset";
+inline constexpr std::string_view envAttackId = "envAttack", envReleaseId = "envRelease", envGainId = "envGain";
+inline constexpr std::string_view kGateModes[] = { "Latching", "Momentary" };
+inline constexpr std::string_view kModShapes[] = { "Sine", "Triangle", "Saw", "Square", "S&H", "Smooth Random" };
+inline constexpr std::string_view kPolarities[] = { "Unipolar", "Bipolar" };
+inline constexpr std::string_view kModSources[] = { "None", "Mod 1", "Mod 2", "Mod 3", "Mod 4", "Env", "CC 1", "CC 2", "CC 3", "CC 4" };
+inline constexpr std::string_view kModDests[] = { "None", "Time", "Repeats", "Mix", "Bend", "Break", "Corrupt" };
+inline constexpr std::string_view kGateNames[] = { "Freeze", "Bend", "Break", "Corrupt", "Reset", "Note clock" };
+inline constexpr int kDefaultGateNotes[] = { 36, 37, 38, 39, 40, 41 };   // C1 .. F1 (Live's numbering, C3 = 60)
+inline constexpr int kDefaultCcNumbers[] = { 1, 16, 17, 18 };            // mod wheel, then general purpose 1-3
+
+inline constexpr int kStateVersion = 6;
 
 float dbToGain (float db) noexcept;
 } // namespace fault::params

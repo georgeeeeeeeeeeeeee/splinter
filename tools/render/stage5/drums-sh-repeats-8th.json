@@ -1,0 +1,29 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120.0,
+  "playing": true
+ },
+ "mix": 1.0,
+ "mode": "macro",
+ "block": "random",
+ "seed": 3,
+ "tail": 0.5,
+ "time": 0.625,
+ "repeats": 4,
+ "length": 8.0,
+ "mods": [
+  {
+   "shape": "sh",
+   "sync": "1/8",
+   "polarity": "uni"
+  }
+ ],
+ "routes": [
+  {
+   "source": "mod1",
+   "dest": "repeats",
+   "depth": 0.5
+  }
+ ]
+}

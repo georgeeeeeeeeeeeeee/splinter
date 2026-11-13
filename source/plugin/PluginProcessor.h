@@ -51,6 +51,13 @@ public:
     // Dev builds: tuning/macro_tables.json, reloaded when saved. Message thread only.
     juce::String tablesStatus() const { return tablesStatus_; }
 
+    // Stage 5: learnable CC lanes and gate notes (plug-in state, not parameters). The editor sets
+    // learnCc / learnGate; the next CC / note-on is taken and the learn ends.
+    std::array<std::atomic<int>, dsp::kNumCcLanes> ccNumbers {};
+    std::array<std::atomic<int>, dsp::kNumGates> gateNotes {};
+    std::atomic<int> learnCc { -1 }, learnGate { -1 };
+    void restoreDefaults();   // message thread
+
 private:
     void timerCallback() override;   // dev builds: watch the tables file
     dsp::EngineParams readParams() const noexcept;
@@ -61,7 +68,12 @@ private:
     juce::AudioProcessorValueTreeState apvts;
     struct Raw { std::atomic<float> *time, *repeats, *mix, *windowing, *width, *freeze, *reset, *clock, *freezeMode,
                        *mode, *bend, *brk, *bendOnMacro, *bendOnMicro, *breakOnMacro, *breakOnMicro, *noteToSpeed,
-                       *stereo, *seed, *corrupt, *corruptType, *corruptSet; } raw {};
+                       *stereo, *seed, *corrupt, *corruptType, *corruptSet,
+                       *bendAtten, *breakAtten, *corruptAtten, *gateMode, *corruptAsReset, *envAttack, *envRelease, *envGain; } raw {};
+    std::array<std::array<std::atomic<float>*, 5>, dsp::kNumModulators> rawMod {};   // shape, rate, sync, phase, polarity
+    std::array<std::array<std::atomic<float>*, 3>, dsp::kNumRoutes> rawRoute {};     // source, dest, depth
+    std::array<std::atomic<float>*, dsp::kNumCcLanes> rawCcPolarity {};
+
     dsp::Engine engine_;
     bool resetHeld = false;
     static constexpr int kFifo = 512;

@@ -13,6 +13,15 @@
 //     "bendOnMacro": true, "breakOnMacro": true, "stereo": "unique"|"shared", "seed": 0, "sessionSeed": 1,
 //     "bendZone": 3, "bendZonePos": 0.5, "breakZone": 2, "breakZonePos": 0.9,   // knob from the tables' zones
 //     "corrupt": 0.5, "corruptType": "decimate"|"dropout"|"destroy"|"djfilter"|"vinyl", "corruptSet": "all"|"original3" }
+//   Stage 5: "clock": "note", "gateMode": "latching"|"momentary", "corruptAsReset": false,
+//     "bendAtten" / "breakAtten" / "corruptAtten": 0..1, "gateNotes": [36, 37, 38, 39, 40, 41],
+//     "mods": [ { "shape": "sine"|"triangle"|"saw"|"square"|"sh"|"smooth", "rate": 1.0, "sync": "free"|"1/16"|...,
+//                 "phase": 0..1, "polarity": "bi"|"uni" }, ... ],
+//     "env": { "attack": 10, "release": 200, "gain": 0 },          // ms, ms, dB
+//     "cc": [ { "number": 1, "polarity": "uni" }, ... ],
+//     "routes": [ { "source": "mod1"|"env"|"cc1"|..., "dest": "time"|"repeats"|"mix"|"bend"|"break"|"corrupt", "depth": -1..1 }, ... ]
+//   midi events may also be { "time": 1.0, "cc": 1, "value": 64 } or { "time": 1.0, "gate": "freeze", "on": true }
+//   automation params also: route<n>Depth / route<n>Source / route<n>Dest, mod<n>Rate / Shape / Sync / Phase
 //   automation ramps: { "time": 1.0, "param": "corrupt", "value": 0, "to": 1, "duration": 4 }   (1 ms steps)
 //
 //   --tables tuning/macro_tables.json      Macro tables to use (default: the compiled-in ones)
@@ -26,6 +35,7 @@
 #include <juce_graphics/juce_graphics.h>
 
 #include <iostream>
+#include <functional>
 #include <map>
 
 namespace
@@ -43,6 +53,51 @@ float zoneKnob (const std::array<float, fault::dsp::kZones>& starts, int zone, f
     return lo + juce::jlimit (0.0f, 1.0f, pos) * (hi - lo);
 }
 
+int indexOf (const juce::StringArray& names, const juce::var& v)
+{
+    if (! v.isString()) return (int) v;
+    return names.indexOf (v.toString().toLowerCase().removeCharacters (" _-&"));
+}
+const juce::StringArray kShapeNames { "sine", "triangle", "saw", "square", "sh", "smooth" };
+const juce::StringArray kSourceNames { "none", "mod1", "mod2", "mod3", "mod4", "env", "cc1", "cc2", "cc3", "cc4" };
+const juce::StringArray kDestNames { "none", "time", "repeats", "mix", "bend", "break", "corrupt" };
+const juce::StringArray kGateNames { "freeze", "bend", "break", "corrupt", "reset", "clock" };
+int syncIndex (const juce::var& v)
+{
+    if (! v.isString()) return (int) v;
+    for (int i = 0; i < (int) fault::dsp::kSyncDivisions.size(); ++i)
+        if (v.toString().equalsIgnoreCase (fault::dsp::kSyncDivisions[(size_t) i].name)) return i;
+    return -1;   // free
+}
+bool applyModulator (fault::dsp::ModulatorParams& m, const juce::String& key, const juce::var& v)
+{
+    if (key == "shape") { const int i = indexOf (kShapeNames, v); if (i < 0) return false; m.shape = (fault::dsp::ModShape) i; }
+    else if (key == "rate") m.rateHz = (float) (double) v;
+    else if (key == "sync") m.sync = syncIndex (v);
+    else if (key == "phase") m.phase = (float) (double) v;
+    else if (key == "polarity") m.bipolar = ! v.toString().startsWithIgnoreCase ("uni");
+    else return false;
+    return true;
+}
+bool applyRoute (fault::dsp::Route& r, const juce::String& key, const juce::var& v)
+{
+    if (key == "source") { const int i = indexOf (kSourceNames, v); if (i < 0) return false; r.source = (fault::dsp::ModSource) i; }
+    else if (key == "dest") { const int i = indexOf (kDestNames, v); if (i < 0) return false; r.dest = (fault::dsp::ModDest) i; }
+    else if (key == "depth") r.depth = (float) (double) v;
+    else return false;
+    return true;
+}
+bool applyObject (const juce::var& obj, const std::function<bool (const juce::String&, const juce::var&)>& f)
+{
+    if (auto* o = obj.getDynamicObject())
+    {
+        for (const auto& prop : o->getProperties())
+            if (! f (prop.name.toString(), prop.value)) return false;
+        return true;
+    }
+    return false;
+}
+
 struct ZoneRequest { int bendZone = -1, breakZone = -1; float bendPos = 0.5f, breakPos = 0.5f; };
 
 bool apply (fault::dsp::EngineParams& p, const juce::String& key, const juce::var& v, ZoneRequest& zr, uint64_t& sessionSeed)
@@ -53,7 +108,7 @@ bool apply (fault::dsp::EngineParams& p, const juce::String& key, const juce::va
     else if (key == "mix") p.mix = (float) (double) v;
     else if (key == "freeze") p.freeze = (bool) v;
     else if (key == "freezeMode") p.freezeMode = v.toString() == "momentary" ? FreezeMode::momentary : FreezeMode::latching;
-    else if (key == "clock") p.clock = v.toString() == "host" ? ClockSource::host : ClockSource::internal;
+    else if (key == "clock") p.clock = v.toString() == "host" ? ClockSource::host : v.toString() == "note" ? ClockSource::note : ClockSource::internal;
     else if (key == "windowing") p.windowing = (float) (double) v;
     else if (key == "width") p.width = (float) (double) v;
     else if (key == "mode") p.mode = v.toString() == "micro" ? Mode::micro : Mode::macro;
@@ -75,6 +130,57 @@ bool apply (fault::dsp::EngineParams& p, const juce::String& key, const juce::va
         p.corruptType = (CorruptType) i;
     }
     else if (key == "corruptSet") p.corruptSet = v.toString().containsIgnoreCase ("3") || v.toString().startsWithIgnoreCase ("orig") ? CorruptSet::original3 : CorruptSet::all;
+    else if (key == "gateMode") p.gateMode = v.toString() == "momentary" ? GateMode::momentary : GateMode::latching;
+    else if (key == "corruptAsReset") p.corruptAsReset = (bool) v;
+    else if (key == "bendAtten") p.mod.bendAtten = (float) (double) v;
+    else if (key == "breakAtten") p.mod.breakAtten = (float) (double) v;
+    else if (key == "corruptAtten") p.mod.corruptAtten = (float) (double) v;
+    else if (key == "mods")
+    {
+        auto* a = v.getArray();
+        if (a == nullptr) return false;
+        for (int i = 0; i < std::min (a->size(), kNumModulators); ++i)
+            if (! applyObject ((*a)[i], [&] (const juce::String& k, const juce::var& x) { return applyModulator (p.mod.mods[(size_t) i], k, x); })) return false;
+    }
+    else if (key == "routes")
+    {
+        auto* a = v.getArray();
+        if (a == nullptr) return false;
+        for (int i = 0; i < std::min (a->size(), kNumRoutes); ++i)
+            if (! applyObject ((*a)[i], [&] (const juce::String& k, const juce::var& x) { return applyRoute (p.mod.routes[(size_t) i], k, x); })) return false;
+    }
+    else if (key == "env")
+        return applyObject (v, [&] (const juce::String& k, const juce::var& x) {
+            if (k == "attack") p.mod.env.attackMs = (float) (double) x;
+            else if (k == "release") p.mod.env.releaseMs = (float) (double) x;
+            else if (k == "gain") p.mod.env.gainDb = (float) (double) x;
+            else return false;
+            return true;
+        });
+    else if (key == "cc")
+    {
+        auto* a = v.getArray();
+        if (a == nullptr) return false;
+        for (int i = 0; i < std::min (a->size(), kNumCcLanes); ++i)
+            if (! applyObject ((*a)[i], [&] (const juce::String& k, const juce::var& x) {
+                    if (k == "number") p.mod.ccNumbers[(size_t) i] = (int) x;
+                    else if (k == "polarity") p.mod.ccBipolar[(size_t) i] = x.toString().startsWithIgnoreCase ("bi");
+                    else return false;
+                    return true;
+                })) return false;
+    }
+    else if (key.startsWith ("route") && key.length() > 6 && juce::CharacterFunctions::isDigit (key[5]))
+    {
+        const int i = key.substring (5, 6).getIntValue() - 1;
+        if (i < 0 || i >= kNumRoutes) return false;
+        return applyRoute (p.mod.routes[(size_t) i], key.substring (6).toLowerCase(), v);
+    }
+    else if (key.startsWith ("mod") && key.length() > 4 && juce::CharacterFunctions::isDigit (key[3]))
+    {
+        const int i = key.substring (3, 4).getIntValue() - 1;
+        if (i < 0 || i >= kNumModulators) return false;
+        return applyModulator (p.mod.mods[(size_t) i], key.substring (4).toLowerCase(), v);
+    }
     else if (key == "sessionSeed") sessionSeed = (uint64_t) (juce::int64) v;
     else if (key == "bendZone") zr.bendZone = (int) v;
     else if (key == "bendZonePos") zr.bendPos = (float) (double) v;
@@ -101,7 +207,7 @@ juce::String breakLabel (unsigned m)
 }
 
 struct Event { double time; juce::String param; juce::var value; };
-struct Midi { double time; int note, velocity; bool on; };
+struct Midi { double time; int note, velocity; bool on; bool cc = false; int gate = -1; };
 } // namespace
 
 int main (int argc, char* argv[])
@@ -167,6 +273,7 @@ int main (int argc, char* argv[])
     int block = 512;
     std::vector<Event> events;
     std::vector<Midi> midi;
+    std::array<int, fault::dsp::kNumGates> gateNotes { 36, 37, 38, 39, 40, 41 };
     if (opt ("--params").isNotEmpty())
     {
         const auto json = juce::JSON::parse (cwd.getChildFile (opt ("--params")));
@@ -180,7 +287,23 @@ int main (int argc, char* argv[])
             else if (k == "block") { randomBlocks = prop.value.toString() == "random"; if (! randomBlocks) block = juce::jlimit (1, 65536, (int) prop.value); }
             else if (k == "tail") tail = prop.value;
             else if (k == "length") length = prop.value;   // use only the first `length` seconds of the input
-            else if (k == "midi") { for (const auto& e : *prop.value.getArray()) midi.push_back ({ (double) e["time"], (int) e["note"], (int) e.getProperty ("velocity", 100), (bool) e.getProperty ("on", true) }); }
+            else if (k == "gateNotes") { auto* a = prop.value.getArray(); for (int i = 0; a != nullptr && i < std::min (a->size(), (int) fault::dsp::kNumGates); ++i) gateNotes[(size_t) i] = (int) (*a)[i]; }
+            else if (k == "midi")
+            {
+                for (const auto& e : *prop.value.getArray())
+                {
+                    if (e.hasProperty ("cc"))
+                        midi.push_back ({ (double) e["time"], (int) e["cc"], (int) e.getProperty ("value", 0), true, true });
+                    else if (e.hasProperty ("gate"))
+                    {
+                        const int g = indexOf (kGateNames, e["gate"]);
+                        if (g < 0 || g >= fault::dsp::kNumGates) return fail ("unknown gate '" + e["gate"].toString() + "'");
+                        midi.push_back ({ (double) e["time"], 0, (int) e.getProperty ("velocity", 100), (bool) e.getProperty ("on", true), false, g });
+                    }
+                    else
+                        midi.push_back ({ (double) e["time"], (int) e["note"], (int) e.getProperty ("velocity", 100), (bool) e.getProperty ("on", true) });
+                }
+            }
             else if (k == "automation")
             {
                 for (const auto& e : *prop.value.getArray())
@@ -216,6 +339,9 @@ int main (int argc, char* argv[])
     engine.setTables (tables);
     engine.setSessionSeed (sessionSeed);
     engine.setParams (p);
+    engine.setGateNotes (gateNotes);
+    for (auto& m : midi)
+        if (m.gate >= 0) m.note = gateNotes[(size_t) m.gate];
     engine.prepare (sr, 65536);
     std::vector<fault::dsp::TickEvent> ticks;
     uint64_t seen = 0;
@@ -243,7 +369,7 @@ int main (int argc, char* argv[])
         while (nextMidi < midi.size() && (int) std::llround (midi[nextMidi].time * sr) < pos + n)
         {
             const auto& m = midi[nextMidi++];
-            engine.queueNote ({ std::max (0, (int) std::llround (m.time * sr) - pos), m.note, m.velocity, m.on });
+            engine.queueNote ({ std::max (0, (int) std::llround (m.time * sr) - pos), m.note, m.velocity, m.on, m.cc });
         }
         engine.process (in.getReadPointer (0, pos), in.getReadPointer (1, pos), out.getWritePointer (0, pos), out.getWritePointer (1, pos), n);
         for (; seen < engine.ticksWritten(); ++seen)

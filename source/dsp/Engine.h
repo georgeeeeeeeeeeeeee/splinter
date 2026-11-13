@@ -13,6 +13,7 @@
 #include "dsp/Clock.h"
 #include "dsp/Corrupt/Corrupt.h"
 #include "dsp/MacroBreak.h"
+#include "dsp/Modulation.h"
 #include "dsp/Playhead.h"
 #include "dsp/RecordBuffer.h"
 #include "dsp/Rng.h"
@@ -27,6 +28,9 @@ namespace fault::dsp
 enum class FreezeMode { latching = 0, momentary = 1 };
 enum class Mode { macro = 0, micro = 1 };
 enum class StereoMode { unique = 0, shared = 1 };
+enum class GateMode { latching = 0, momentary = 1 };
+// Gate notes (brief §3.10), in the order of Engine::setGateNotes.
+enum Gate { gateFreeze = 0, gateBend, gateBreak, gateCorrupt, gateReset, gateClock, kNumGates };
 
 struct EngineParams
 {
@@ -52,13 +56,18 @@ struct EngineParams
     float corrupt = 0.0f;     // 0..1. 0 = off (DJ Filter: the centre is off)
     CorruptType corruptType = CorruptType::decimate;
     CorruptSet corruptSet = CorruptSet::all;
+    // Stage 5: modulation and gates.
+    ModParams mod {};
+    GateMode gateMode = GateMode::latching;   // latching: each note-on flips; momentary: flipped while held
+    bool corruptAsReset = false;              // the Corrupt gate acts as Reset
 };
 
-// A MIDI note for the engine, at a sample offset in the next process() block.
+// A MIDI note (or CC) for the engine, at a sample offset in the next process() block.
 struct NoteEvent
 {
-    int offset = 0, note = 60, velocity = 100;
+    int offset = 0, note = 60, velocity = 100;   // a CC: note = controller number, velocity = value
     bool on = true;
+    bool cc = false;
 };
 
 // One clock tick, for the CLI's tick log and the UI.
@@ -99,8 +108,11 @@ public:
     // Notes for the next process() call, offsets ascending (up to kMaxNotes; extra ones are dropped).
     static constexpr int kMaxNotes = 512;
     void queueNote (const NoteEvent& e) noexcept { if (numNotes_ < kMaxNotes) notes_[(size_t) numNotes_++] = e; }
+    void queueCC (int offset, int controller, int value) noexcept { queueNote ({ offset, controller, value, true, true }); }
+    // Drops every gate's flipped state (Restore defaults). Any thread; taken up at the next block.
+    void clearGates() noexcept { clearGates_.store (true, std::memory_order_release); }
     // Gate notes (Freeze, Bend, Break, Corrupt, Reset, Note clock: brief §3.10) never set the pitch.
-    void setGateNotes (const std::array<int, 6>& n) noexcept { gateNotes_ = n; }
+    void setGateNotes (const std::array<int, kNumGates>& n) noexcept { gateNotes_ = n; }
 
     // in and out may alias. Any n.
     void process (const float* inL, const float* inR, float* outL, float* outR, int n) noexcept;
@@ -121,6 +133,12 @@ public:
         std::atomic<uint32_t> sliceChanges { 0 };   // Traverse moved to another slice
         std::atomic<float> silenceDuty { 0.0f };
         std::atomic<int> corrupt { -1 };            // the Corrupt effect playing (-1 = bypassed)
+        // Stage 5: knob + modulation, normalised 0..1, per ModDest ([0] unused), for the UI's rings;
+        // the sources' values; gate states (freeze, bend, break flipped; corrupt steps).
+        std::array<std::atomic<float>, kNumModDests> modulated {};
+        std::array<std::atomic<float>, kNumModSources> sources {};
+        std::atomic<bool> frozen { false }, bendOn { false }, breakOn { false };
+        std::atomic<int> corruptType { 0 };
     };
     const Status& status() const noexcept { return status_; }
     const RecordBuffer& buffer() const noexcept { return buf_; }
@@ -154,7 +172,11 @@ private:
     float mainGain (const Voice& v) const noexcept;
     void spawnTail (Voice& v, double fadeDuration) noexcept;   // hand the main head to the fade-out tail
     void fadeInHead (Voice& v) noexcept;                      // after a mid-slice jump
-    void handleNote (const NoteEvent& e) noexcept;
+    bool handleNote (const NoteEvent& e) noexcept;           // true: a Note clock pulse
+    void applyEffective() noexcept;                           // p_ = knobs + gates + modulation
+    void updateModulation (int offsetInBlock) noexcept;       // on the control grid
+    void clearGateState() noexcept;
+    void renderSegment (const float* inL, const float* inR, float* outL, float* outR, int from, int to) noexcept;
     void updateSpeed() noexcept;                              // per sample: Bend / note / reverse -> head speed
     double macroSpeed (Voice& v) noexcept;
     void resetMacroVoice (Voice& v) noexcept;
@@ -164,7 +186,8 @@ private:
     Pcg32 tickRng (int stream, int64_t tickIndex) noexcept;
 
     double sr_ = 48000.0;
-    EngineParams p_;
+    EngineParams base_;   // from the host (setParams)
+    EngineParams p_;      // what plays: base_ with gates and modulation applied
     HostTransport transport_;
     RecordBuffer buf_;
     Clock clock_;
@@ -180,7 +203,7 @@ private:
     // Stage 2.
     std::array<NoteEvent, kMaxNotes> notes_ {};
     int numNotes_ = 0;
-    std::array<int, 6> gateNotes_ { 36, 37, 38, 39, 40, 41 };   // C1 .. F1
+    std::array<int, kNumGates> gateNotes_ { 36, 37, 38, 39, 40, 41 };   // C1 .. F1
     int pitchNote_ = 60;
     bool hasPitch_ = false;
     double octSmoothed_ = 0.0, octCoef_ = 0.001;
@@ -198,6 +221,20 @@ private:
 
     // Stage 4.
     Corrupt corrupt_;
+
+    // Stage 5.
+    std::array<Modulator, kNumModulators> mods_ {};
+    EnvelopeFollower env_;
+    std::array<float, kNumCcLanes> ccTarget_ {}, ccValue_ {};
+    std::array<float, kNumModSources> sources_ {};
+    ModOffsets offsets_ {};
+    double ccCoef_ = 0.1;
+    bool freezeFlip_ = false;
+    std::array<bool, 2> bendFlip_ {}, breakFlip_ {};   // per mode (Macro, Micro)
+    int corruptSteps_ = 0;
+    int lastPlaying_ = -1;   // -1 unknown, so the first block isn't a "transport start"
+    std::atomic<bool> clearGates_ { false };
+    GateMode lastGateMode_ = GateMode::latching;
 
     std::array<TickEvent, kTickRing> ticks_ {};
     std::atomic<uint64_t> tickCount_ { 0 };

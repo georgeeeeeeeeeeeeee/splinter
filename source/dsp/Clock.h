@@ -2,7 +2,12 @@
 // Clock (brief §3.2). Internal: period follows Time exponentially, 16 s at 0 to 80 Hz at 1. Host:
 // Time picks a division / multiplication of the beat (/16 … ×8, SPEC_NOTES N2), ticks sample-accurate
 // and phase-locked to the host's beat position, re-synced on transport start and loop jumps. With the
-// transport stopped it free-runs at the host tempo. (Note clock: Stage 5.)
+// transport stopped it free-runs at the host tempo. Note: each note-on of the Note clock gate note is
+// a pulse; the interval between pulses is measured and the same div/mult applied (×N: N ticks per
+// pulse, evenly spaced; /N: every Nth pulse). If no pulse arrives for four pulse intervals it carries on
+// at the last rate, on the same grid, until pulses return.
+// Reset: Internal ticks at once (a new window); Host realigns the division to the next beat; Note
+// realigns the division counter so the next pulse ticks.
 
 #include <array>
 #include <cstdint>
@@ -33,8 +38,9 @@ public:
     void setSource (ClockSource s) noexcept { source_ = s; }
     void setTime (float t) noexcept { time_ = t; }
 
-    // Call once per block before ticks are read: works out every tick offset in [0, n).
-    void beginBlock (const HostTransport& t, int n) noexcept;
+    // Call once per block before ticks are read: works out every tick offset in [0, n). `pulse`: a Note
+    // clock pulse on the block's first sample (the engine splits blocks at note events).
+    void beginBlock (const HostTransport& t, int n, bool pulse = false) noexcept;
     // Ticks in this block, ascending sample offsets.
     int numTicks() const noexcept { return numTicks_; }
     int tickAt (int i) const noexcept { return ticks_[(size_t) i]; }
@@ -46,9 +52,11 @@ public:
     int step() const noexcept { return step_; }
     uint32_t stepChanges() const noexcept { return stepChanges_; }   // UI flag: div/mult step changed
     void resync() noexcept { resync_ = true; }                       // Reset: next pulse / now (internal)
+    void transportStarted() noexcept { origin_ = 0.0; }              // host grid back on the bar
 
 private:
     void addTick (int offset, int64_t index) noexcept;
+    void noteBlock (const HostTransport& t, int n, bool pulse) noexcept;
 
     double sr_ = 48000.0, phase_ = 0.0, period_ = 48000.0, lastPpqEnd_ = -1.0;
     float time_ = 0.5f;
@@ -60,6 +68,12 @@ private:
     std::array<int, kMaxTicks> ticks_ {};
     std::array<int64_t, kMaxTicks> index_ {};
     int64_t freeCount_ = 0;
+    double origin_ = 0.0;                 // host grid origin, in beats (moved by Reset)
+    // Note clock.
+    int64_t now_ = 0, lastPulse_ = -1;    // samples
+    double interval_ = 0.0, lastTick_ = 0.0;
+    int pulseCount_ = 0, subLeft_ = 0;
+    bool noteFree_ = false;
     int numTicks_ = 0;
 };
 } // namespace fault::dsp

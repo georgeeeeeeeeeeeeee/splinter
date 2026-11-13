@@ -54,3 +54,9 @@ Wow as a modulated delay (at most ~3 ms, linear interpolation) keeps Vinyl self-
 
 ## D17 — New parameters (Stage 4)
 `corrupt` (0–1, default 0 = off), `corruptType` (Decimate, Dropout, Destroy, DJ Filter, Vinyl) and `corruptSet` (All / Original 3). State version 5. `corruptAtten` arrives with the mod matrix in Stage 5.
+
+## D18 — Segments and a control grid (Stage 5)
+`Engine::process` runs in segments, split at the 32-sample control grid (absolute time) and at every MIDI event. At each grid point the modulators advance and the offsets are recomputed; at each event the gates act. The "effective" parameters (knobs + gates + modulation) are rebuilt at both. Each segment is one clock block. The host's block boundaries change nothing, which keeps the Stage 1–4 bit-identity tests passing unchanged and extends them to modulation, CCs and gates (tested at 1, 512 and random block sizes). `EngineParams` from the host are kept as `base_`; what plays is `p_`, and modulation is never written back.
+
+## D19 — Modulation and gate parameters (Stage 5)
+Parameters: `bendAtten`, `breakAtten`, `corruptAtten` (default 100%); `gateMode`; `corruptAsReset`; per modulator `mod<n>Shape/Rate/Sync/Phase/Polarity` (Sync is "Free" or a synced length, so one choice replaces a sync toggle plus a division); `envAttack/Release/Gain`; `cc<n>Polarity`; per route `route<n>Source/Dest/Depth`. 78 parameters in all; state version 6. The CC numbers and gate notes are plug-in state (`ccNumbers` and `gateNotes` properties), learnt from the editor via atomics the audio thread reads each block.

@@ -1,0 +1,29 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120.0,
+  "playing": true
+ },
+ "mix": 1.0,
+ "mode": "micro",
+ "block": "random",
+ "seed": 3,
+ "tail": 0.5,
+ "time": 0.5,
+ "repeats": 1,
+ "length": 14.0,
+ "bend": 0.5,
+ "mods": [
+  {
+   "shape": "triangle",
+   "sync": "2 bars"
+  }
+ ],
+ "routes": [
+  {
+   "source": "mod1",
+   "dest": "bend",
+   "depth": 0.17
+  }
+ ]
+}
