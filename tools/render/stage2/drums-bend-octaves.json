@@ -1,0 +1,44 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "mix": 1.0,
+ "mode": "micro",
+ "block": "random",
+ "time": 0.5,
+ "repeats": 1,
+ "automation": [
+  {
+   "time": 2.0,
+   "param": "bend",
+   "value": 0.6666666666666666
+  },
+  {
+   "time": 4.0,
+   "param": "bend",
+   "value": 0.8333333333333334
+  },
+  {
+   "time": 6.0,
+   "param": "bend",
+   "value": 1.0
+  },
+  {
+   "time": 8.0,
+   "param": "bend",
+   "value": 0.3333333333333333
+  },
+  {
+   "time": 10.0,
+   "param": "bend",
+   "value": 0.16666666666666666
+  },
+  {
+   "time": 12.0,
+   "param": "bend",
+   "value": 0.5
+  }
+ ]
+}

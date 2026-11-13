@@ -51,7 +51,8 @@ public:
 private:
     dsp::EngineParams readParams() const noexcept;
     juce::AudioProcessorValueTreeState apvts;
-    struct Raw { std::atomic<float> *time, *repeats, *mix, *windowing, *width, *freeze, *reset, *clock, *freezeMode; } raw {};
+    struct Raw { std::atomic<float> *time, *repeats, *mix, *windowing, *width, *freeze, *reset, *clock, *freezeMode,
+                       *mode, *bend, *brk, *bendOnMacro, *bendOnMicro, *breakOnMacro, *breakOnMicro, *noteToSpeed; } raw {};
     dsp::Engine engine_;
     bool resetHeld = false;
     static constexpr int kFifo = 512;

@@ -1,0 +1,223 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "mix": 1.0,
+ "mode": "micro",
+ "block": "random",
+ "time": 0.25,
+ "repeats": 2,
+ "noteToSpeed": true,
+ "tail": 9,
+ "automation": [
+  {
+   "time": 3.8,
+   "param": "freeze",
+   "value": true
+  }
+ ],
+ "midi": [
+  {
+   "time": 4.2,
+   "note": 60,
+   "on": true
+  },
+  {
+   "time": 4.63,
+   "note": 60,
+   "on": false
+  },
+  {
+   "time": 4.65,
+   "note": 63,
+   "on": true
+  },
+  {
+   "time": 5.08,
+   "note": 63,
+   "on": false
+  },
+  {
+   "time": 5.1,
+   "note": 67,
+   "on": true
+  },
+  {
+   "time": 5.53,
+   "note": 67,
+   "on": false
+  },
+  {
+   "time": 5.55,
+   "note": 70,
+   "on": true
+  },
+  {
+   "time": 5.98,
+   "note": 70,
+   "on": false
+  },
+  {
+   "time": 6.0,
+   "note": 72,
+   "on": true
+  },
+  {
+   "time": 6.43,
+   "note": 72,
+   "on": false
+  },
+  {
+   "time": 6.45,
+   "note": 70,
+   "on": true
+  },
+  {
+   "time": 6.88,
+   "note": 70,
+   "on": false
+  },
+  {
+   "time": 6.9,
+   "note": 67,
+   "on": true
+  },
+  {
+   "time": 7.33,
+   "note": 67,
+   "on": false
+  },
+  {
+   "time": 7.35,
+   "note": 63,
+   "on": true
+  },
+  {
+   "time": 7.78,
+   "note": 63,
+   "on": false
+  },
+  {
+   "time": 7.8,
+   "note": 55,
+   "on": true
+  },
+  {
+   "time": 8.23,
+   "note": 55,
+   "on": false
+  },
+  {
+   "time": 8.25,
+   "note": 58,
+   "on": true
+  },
+  {
+   "time": 8.68,
+   "note": 58,
+   "on": false
+  },
+  {
+   "time": 8.7,
+   "note": 60,
+   "on": true
+  },
+  {
+   "time": 9.13,
+   "note": 60,
+   "on": false
+  },
+  {
+   "time": 9.15,
+   "note": 62,
+   "on": true
+  },
+  {
+   "time": 9.58,
+   "note": 62,
+   "on": false
+  },
+  {
+   "time": 9.6,
+   "note": 63,
+   "on": true
+  },
+  {
+   "time": 10.03,
+   "note": 63,
+   "on": false
+  },
+  {
+   "time": 10.05,
+   "note": 62,
+   "on": true
+  },
+  {
+   "time": 10.48,
+   "note": 62,
+   "on": false
+  },
+  {
+   "time": 10.5,
+   "note": 60,
+   "on": true
+  },
+  {
+   "time": 10.93,
+   "note": 60,
+   "on": false
+  },
+  {
+   "time": 10.95,
+   "note": 55,
+   "on": true
+  },
+  {
+   "time": 11.38,
+   "note": 55,
+   "on": false
+  },
+  {
+   "time": 11.4,
+   "note": 48,
+   "on": true
+  },
+  {
+   "time": 11.83,
+   "note": 48,
+   "on": false
+  },
+  {
+   "time": 11.85,
+   "note": 60,
+   "on": true
+  },
+  {
+   "time": 12.28,
+   "note": 60,
+   "on": false
+  },
+  {
+   "time": 12.3,
+   "note": 72,
+   "on": true
+  },
+  {
+   "time": 12.73,
+   "note": 72,
+   "on": false
+  },
+  {
+   "time": 12.75,
+   "note": 84,
+   "on": true
+  },
+  {
+   "time": 13.18,
+   "note": 84,
+   "on": false
+  }
+ ]
+}

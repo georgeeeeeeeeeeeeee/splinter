@@ -2,12 +2,13 @@
 
 A circuit-bent digital buffer effect (AU + VST3). It records audio into a long stereo buffer and, on every clock tick, plays a window of it back broken: stutters, reverse, varispeed, tape stops, skips, dropouts, then bitcrush, saturation, filter and vinyl. An original product.
 
-Status: **Stage 1**, buffer core. The record buffer, Internal and Host clocks, windows and Repeats, the playhead, slice windowing, Freeze, Mix and Width all work, with a render CLI and unit tests. The UI is a debug panel; MIDI is only logged so far.
+Status: **Stage 2**, Micro mode. On top of the Stage 1 buffer core: Bend as speed (±3 octaves) with reverse, MIDI note pitch as speed (in tune within 2 cents), Traverse and Silence, and per-mode toggles. The UI is a debug panel.
 
 ```
 build/tests/fault_tests                       # unit tests
 python3 tools/make_fixtures.py [voice.wav]    # test material (needs numpy, scipy)
-scripts/checkpoint1.sh   (or .ps1)             # renders: build/renders/stage1/*.wav + .png + .csv
+scripts/checkpoint1.sh, checkpoint2.sh   (or .ps1)   # renders: build/renders/stage1, stage2
+python3 tools/check_pitch.py build/renders/stage2/tone-chromatic.wav tools/render/stage2/tone-chromatic.json
 ```
 
 ## Install (unsigned build)

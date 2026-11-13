@@ -27,3 +27,9 @@ Live Lite is the only test host. Unanswered questions are left at their defaults
 
 ## D8 — Render CLI
 `tools/render` (`FaultRender`, JUCE for WAV/JSON/PNG only) drives `dsp::Engine` directly, with a fake host transport. It takes `--key value` arguments and writes the output WAV, a PNG (input in grey behind output, ticks in white, frozen ticks in blue, slice divisions faint) and a tick-log CSV. Checkpoint settings are committed JSON files in `tools/render/stage1/`, run by `scripts/checkpoint1.sh` or `.ps1`. Test material comes from `tools/make_fixtures.py`: a synthesised drum loop, plus a voice recording copied in.
+
+## D9 — Per-mode Bend/Break toggles are four parameters (Stage 2)
+The brief's `bendOn` and `breakOn` are "stored per mode". They're implemented as `bendOnMacro`, `bendOnMicro` ("Reverse (Micro)"), `breakOnMacro` and `breakOnMicro` ("Break Silence (Micro)"), so each has its own automation lane and host state. The Stage 6 UI's single Bend and Break buttons will act on the current mode's parameter. Switching mode resets the speed glide to the new mode's own value, so pitch and reverse can't leak across (tested).
+
+## D10 — MIDI reaches the engine sample-accurately
+The processor queues each note with its block offset (`Engine::queueNote`), and the engine applies it on that sample. Output with notes is identical at any host block size (tested).

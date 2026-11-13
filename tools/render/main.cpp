@@ -7,7 +7,9 @@
 //     "clock": "internal"|"host", "windowing": 0.02, "width": 0.5,
 //     "tempo": { "bpm": 120, "playing": true },          // the fake host transport
 //     "block": 512 | "random",  "tail": 2.0,             // host block size; seconds rendered after the input
-//     "automation": [ { "time": 3.0, "param": "freeze", "value": true }, ... ] }
+//     "automation": [ { "time": 3.0, "param": "freeze", "value": true }, ... ],
+//     "mode": "macro"|"micro", "bend": 0.5, "break": 0, "reverse": false, "silence": false, "noteToSpeed": false,
+//     "midi": [ { "time": 1.0, "note": 60, "on": true, "velocity": 100 }, ... ] }   // sample-accurate
 
 #include "dsp/Engine.h"
 
@@ -36,11 +38,20 @@ bool apply (fault::dsp::EngineParams& p, const juce::String& key, const juce::va
     else if (key == "clock") p.clock = v.toString() == "host" ? ClockSource::host : ClockSource::internal;
     else if (key == "windowing") p.windowing = (float) (double) v;
     else if (key == "width") p.width = (float) (double) v;
+    else if (key == "mode") p.mode = v.toString() == "micro" ? Mode::micro : Mode::macro;
+    else if (key == "bend") p.bend = (float) (double) v;
+    else if (key == "break") p.brk = (float) (double) v;
+    else if (key == "bendOnMacro") p.bendOnMacro = (bool) v;
+    else if (key == "bendOnMicro" || key == "reverse") p.bendOnMicro = (bool) v;
+    else if (key == "breakOnMacro") p.breakOnMacro = (bool) v;
+    else if (key == "breakOnMicro" || key == "silence") p.breakOnMicro = (bool) v;
+    else if (key == "noteToSpeed") p.noteToSpeed = (bool) v;
     else return false;
     return true;
 }
 
 struct Event { double time; juce::String param; juce::var value; };
+struct Midi { double time; int note, velocity; bool on; };
 } // namespace
 
 int main (int argc, char* argv[])
@@ -75,6 +86,7 @@ int main (int argc, char* argv[])
     bool playing = true, randomBlocks = false;
     int block = 512;
     std::vector<Event> events;
+    std::vector<Midi> midi;
     if (opt ("--params").isNotEmpty())
     {
         const auto json = juce::JSON::parse (cwd.getChildFile (opt ("--params")));
@@ -87,10 +99,12 @@ int main (int argc, char* argv[])
             if (k == "tempo") { bpm = prop.value.getProperty ("bpm", 120.0); playing = prop.value.getProperty ("playing", true); }
             else if (k == "block") { randomBlocks = prop.value.toString() == "random"; if (! randomBlocks) block = juce::jlimit (1, 65536, (int) prop.value); }
             else if (k == "tail") tail = prop.value;
+            else if (k == "midi") { for (const auto& e : *prop.value.getArray()) midi.push_back ({ (double) e["time"], (int) e["note"], (int) e.getProperty ("velocity", 100), (bool) e.getProperty ("on", true) }); }
             else if (k == "automation") { for (const auto& e : *prop.value.getArray()) events.push_back ({ (double) e["time"], e["param"].toString(), e["value"] }); }
             else if (! apply (p, k, prop.value)) return fail ("unknown key '" + k + "'");
         }
         std::sort (events.begin(), events.end(), [] (const Event& a, const Event& b) { return a.time < b.time; });
+        std::stable_sort (midi.begin(), midi.end(), [] (const Midi& a, const Midi& b) { return a.time < b.time; });
     }
 
     const int total = inLen + (int) (tail * sr);
@@ -105,7 +119,7 @@ int main (int argc, char* argv[])
     engine.prepare (sr, 65536);
     std::vector<fault::dsp::TickEvent> ticks;
     uint64_t seen = 0;
-    size_t nextEvent = 0;
+    size_t nextEvent = 0, nextMidi = 0;
     uint32_t rng = 0xC0FFEEu;
     for (int pos = 0; pos < total;)
     {
@@ -125,6 +139,11 @@ int main (int argc, char* argv[])
         if (nextEvent < events.size())   // land automation on its sample
             n = std::max (1, std::min (n, (int) std::ceil (events[nextEvent].time * sr) - pos));
         engine.setTransport ({ true, playing, bpm, pos / sr * bpm / 60.0 });
+        while (nextMidi < midi.size() && (int) std::llround (midi[nextMidi].time * sr) < pos + n)
+        {
+            const auto& m = midi[nextMidi++];
+            engine.queueNote ({ std::max (0, (int) std::llround (m.time * sr) - pos), m.note, m.velocity, m.on });
+        }
         engine.process (in.getReadPointer (0, pos), in.getReadPointer (1, pos), out.getWritePointer (0, pos), out.getWritePointer (1, pos), n);
         for (; seen < engine.ticksWritten(); ++seen)
             ticks.push_back (engine.tick (seen));

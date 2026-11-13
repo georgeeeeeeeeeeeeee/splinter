@@ -45,6 +45,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
     l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (params::resetId), 1 }, "Reset", false));
     l.add (makeFloat (params::windowing, { 0.0f, 100.0f, 0.0f, 0.5f }, pct));
     l.add (makeFloat (params::width, { 0.0f, 100.0f }, pct));
+
+    l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { toJuce (params::modeId), 1 }, "Mode", names ({ params::kModes[0], params::kModes[1] }), 0));
+    const params::FloatSpec bendSpec { params::bendId, "Bend", 0.0f, 1.0f, 0.5f, "" }, breakSpec { params::breakId, "Break", 0.0f, 1.0f, 0.0f, "" };
+    l.add (makeFloat (bendSpec, { 0.0f, 1.0f }, [] (float v, int) {   // shown as Micro's speed; Macro reads it as zones
+        const float oct = -3.0f + 6.0f * v;
+        return (oct >= 0.0f ? "+" : "") + juce::String (oct, 2) + " oct";
+    }));
+    l.add (makeFloat (breakSpec, { 0.0f, 1.0f }, [] (float v, int) { return juce::String (v * 100.0f, 0) + "%"; }));
+    const auto toggle = [&l] (std::string_view id, const char* name) {
+        l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (id), 1 }, name, false));
+    };
+    toggle (params::bendOnMacroId, "Bend On (Macro)");
+    toggle (params::bendOnMicroId, "Reverse (Micro)");
+    toggle (params::breakOnMacroId, "Break On (Macro)");
+    toggle (params::breakOnMicroId, "Break Silence (Micro)");
+    toggle (params::noteToSpeedId, "Note to Speed");
     return l;
 }
 } // namespace
@@ -56,7 +72,9 @@ FaultProcessor::FaultProcessor()
 {
     const auto get = [this] (std::string_view id) { return apvts.getRawParameterValue (toJuce (id)); };
     raw = { get (params::time.id), get (params::repeats.id), get (params::mix.id), get (params::windowing.id), get (params::width.id),
-            get (params::freezeId), get (params::resetId), get (params::clockSourceId), get (params::freezeButtonModeId) };
+            get (params::freezeId), get (params::resetId), get (params::clockSourceId), get (params::freezeButtonModeId),
+            get (params::modeId), get (params::bendId), get (params::breakId), get (params::bendOnMacroId), get (params::bendOnMicroId),
+            get (params::breakOnMacroId), get (params::breakOnMicroId), get (params::noteToSpeedId) };
     engine_.setParams (readParams());
     engine_.prepare (48000.0, 512);   // playable even before prepareToPlay; re-prepared there
 }
@@ -73,6 +91,14 @@ dsp::EngineParams FaultProcessor::readParams() const noexcept
     p.freezeMode = raw.freezeMode->load() > 0.5f ? dsp::FreezeMode::momentary : dsp::FreezeMode::latching;
     const int clock = (int) raw.clock->load();
     p.clock = clock == 1 ? dsp::ClockSource::host : dsp::ClockSource::internal;   // Note clock: Stage 5
+    p.mode = raw.mode->load() > 0.5f ? dsp::Mode::micro : dsp::Mode::macro;
+    p.bend = raw.bend->load();
+    p.brk = raw.brk->load();
+    p.bendOnMacro = raw.bendOnMacro->load() > 0.5f;
+    p.bendOnMicro = raw.bendOnMicro->load() > 0.5f;
+    p.breakOnMacro = raw.breakOnMacro->load() > 0.5f;
+    p.breakOnMicro = raw.breakOnMicro->load() > 0.5f;
+    p.noteToSpeed = raw.noteToSpeed->load() > 0.5f;
     return p;
 }
 
@@ -103,6 +129,8 @@ void FaultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
         else if (m.isNoteOff()) { e.kind = MidiLogEvent::Kind::noteOff; e.data1 = m.getNoteNumber(); ++counts[1]; }
         else if (m.isController()) { e.kind = MidiLogEvent::Kind::cc; e.data1 = m.getControllerNumber(); e.data2 = m.getControllerValue(); ++counts[2]; }
         else if (m.isPitchWheel()) { e.kind = MidiLogEvent::Kind::pitchBend; e.data1 = m.getPitchWheelValue(); ++counts[3]; }
+        if (m.isNoteOnOrOff())   // into the engine, at its sample
+            engine_.queueNote ({ meta.samplePosition, m.getNoteNumber(), m.getVelocity(), m.isNoteOn() });
         else continue;
         const auto scope = fifo.write (1);
         if (scope.blockSize1 > 0)

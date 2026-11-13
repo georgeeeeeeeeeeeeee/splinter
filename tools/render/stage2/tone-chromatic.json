@@ -1,0 +1,686 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "mix": 1.0,
+ "mode": "micro",
+ "block": "random",
+ "time": 0.0,
+ "repeats": 1,
+ "noteToSpeed": true,
+ "tail": 0,
+ "midi": [
+  {
+   "time": 8.2,
+   "note": 24,
+   "on": true
+  },
+  {
+   "time": 8.43,
+   "note": 24,
+   "on": false
+  },
+  {
+   "time": 8.45,
+   "note": 25,
+   "on": true
+  },
+  {
+   "time": 8.68,
+   "note": 25,
+   "on": false
+  },
+  {
+   "time": 8.7,
+   "note": 26,
+   "on": true
+  },
+  {
+   "time": 8.93,
+   "note": 26,
+   "on": false
+  },
+  {
+   "time": 8.95,
+   "note": 27,
+   "on": true
+  },
+  {
+   "time": 9.18,
+   "note": 27,
+   "on": false
+  },
+  {
+   "time": 9.2,
+   "note": 28,
+   "on": true
+  },
+  {
+   "time": 9.43,
+   "note": 28,
+   "on": false
+  },
+  {
+   "time": 9.45,
+   "note": 29,
+   "on": true
+  },
+  {
+   "time": 9.68,
+   "note": 29,
+   "on": false
+  },
+  {
+   "time": 9.7,
+   "note": 30,
+   "on": true
+  },
+  {
+   "time": 9.93,
+   "note": 30,
+   "on": false
+  },
+  {
+   "time": 9.95,
+   "note": 31,
+   "on": true
+  },
+  {
+   "time": 10.18,
+   "note": 31,
+   "on": false
+  },
+  {
+   "time": 10.2,
+   "note": 32,
+   "on": true
+  },
+  {
+   "time": 10.43,
+   "note": 32,
+   "on": false
+  },
+  {
+   "time": 10.45,
+   "note": 33,
+   "on": true
+  },
+  {
+   "time": 10.68,
+   "note": 33,
+   "on": false
+  },
+  {
+   "time": 10.7,
+   "note": 34,
+   "on": true
+  },
+  {
+   "time": 10.93,
+   "note": 34,
+   "on": false
+  },
+  {
+   "time": 10.95,
+   "note": 35,
+   "on": true
+  },
+  {
+   "time": 11.18,
+   "note": 35,
+   "on": false
+  },
+  {
+   "time": 11.2,
+   "note": 42,
+   "on": true
+  },
+  {
+   "time": 11.43,
+   "note": 42,
+   "on": false
+  },
+  {
+   "time": 11.45,
+   "note": 43,
+   "on": true
+  },
+  {
+   "time": 11.68,
+   "note": 43,
+   "on": false
+  },
+  {
+   "time": 11.7,
+   "note": 44,
+   "on": true
+  },
+  {
+   "time": 11.93,
+   "note": 44,
+   "on": false
+  },
+  {
+   "time": 11.95,
+   "note": 45,
+   "on": true
+  },
+  {
+   "time": 12.18,
+   "note": 45,
+   "on": false
+  },
+  {
+   "time": 12.2,
+   "note": 46,
+   "on": true
+  },
+  {
+   "time": 12.43,
+   "note": 46,
+   "on": false
+  },
+  {
+   "time": 12.45,
+   "note": 47,
+   "on": true
+  },
+  {
+   "time": 12.68,
+   "note": 47,
+   "on": false
+  },
+  {
+   "time": 12.7,
+   "note": 48,
+   "on": true
+  },
+  {
+   "time": 12.93,
+   "note": 48,
+   "on": false
+  },
+  {
+   "time": 12.95,
+   "note": 49,
+   "on": true
+  },
+  {
+   "time": 13.18,
+   "note": 49,
+   "on": false
+  },
+  {
+   "time": 13.2,
+   "note": 50,
+   "on": true
+  },
+  {
+   "time": 13.43,
+   "note": 50,
+   "on": false
+  },
+  {
+   "time": 13.45,
+   "note": 51,
+   "on": true
+  },
+  {
+   "time": 13.68,
+   "note": 51,
+   "on": false
+  },
+  {
+   "time": 13.7,
+   "note": 52,
+   "on": true
+  },
+  {
+   "time": 13.93,
+   "note": 52,
+   "on": false
+  },
+  {
+   "time": 13.95,
+   "note": 53,
+   "on": true
+  },
+  {
+   "time": 14.18,
+   "note": 53,
+   "on": false
+  },
+  {
+   "time": 14.2,
+   "note": 54,
+   "on": true
+  },
+  {
+   "time": 14.43,
+   "note": 54,
+   "on": false
+  },
+  {
+   "time": 14.45,
+   "note": 55,
+   "on": true
+  },
+  {
+   "time": 14.68,
+   "note": 55,
+   "on": false
+  },
+  {
+   "time": 14.7,
+   "note": 56,
+   "on": true
+  },
+  {
+   "time": 14.93,
+   "note": 56,
+   "on": false
+  },
+  {
+   "time": 14.95,
+   "note": 57,
+   "on": true
+  },
+  {
+   "time": 15.18,
+   "note": 57,
+   "on": false
+  },
+  {
+   "time": 15.2,
+   "note": 58,
+   "on": true
+  },
+  {
+   "time": 15.43,
+   "note": 58,
+   "on": false
+  },
+  {
+   "time": 15.45,
+   "note": 59,
+   "on": true
+  },
+  {
+   "time": 15.68,
+   "note": 59,
+   "on": false
+  },
+  {
+   "time": 15.7,
+   "note": 60,
+   "on": true
+  },
+  {
+   "time": 15.93,
+   "note": 60,
+   "on": false
+  },
+  {
+   "time": 15.95,
+   "note": 61,
+   "on": true
+  },
+  {
+   "time": 16.18,
+   "note": 61,
+   "on": false
+  },
+  {
+   "time": 16.2,
+   "note": 62,
+   "on": true
+  },
+  {
+   "time": 16.43,
+   "note": 62,
+   "on": false
+  },
+  {
+   "time": 16.45,
+   "note": 63,
+   "on": true
+  },
+  {
+   "time": 16.68,
+   "note": 63,
+   "on": false
+  },
+  {
+   "time": 16.7,
+   "note": 64,
+   "on": true
+  },
+  {
+   "time": 16.93,
+   "note": 64,
+   "on": false
+  },
+  {
+   "time": 16.95,
+   "note": 65,
+   "on": true
+  },
+  {
+   "time": 17.18,
+   "note": 65,
+   "on": false
+  },
+  {
+   "time": 17.2,
+   "note": 66,
+   "on": true
+  },
+  {
+   "time": 17.43,
+   "note": 66,
+   "on": false
+  },
+  {
+   "time": 17.45,
+   "note": 67,
+   "on": true
+  },
+  {
+   "time": 17.68,
+   "note": 67,
+   "on": false
+  },
+  {
+   "time": 17.7,
+   "note": 68,
+   "on": true
+  },
+  {
+   "time": 17.93,
+   "note": 68,
+   "on": false
+  },
+  {
+   "time": 17.95,
+   "note": 69,
+   "on": true
+  },
+  {
+   "time": 18.18,
+   "note": 69,
+   "on": false
+  },
+  {
+   "time": 18.2,
+   "note": 70,
+   "on": true
+  },
+  {
+   "time": 18.43,
+   "note": 70,
+   "on": false
+  },
+  {
+   "time": 18.45,
+   "note": 71,
+   "on": true
+  },
+  {
+   "time": 18.68,
+   "note": 71,
+   "on": false
+  },
+  {
+   "time": 18.7,
+   "note": 72,
+   "on": true
+  },
+  {
+   "time": 18.93,
+   "note": 72,
+   "on": false
+  },
+  {
+   "time": 18.95,
+   "note": 73,
+   "on": true
+  },
+  {
+   "time": 19.18,
+   "note": 73,
+   "on": false
+  },
+  {
+   "time": 19.2,
+   "note": 74,
+   "on": true
+  },
+  {
+   "time": 19.43,
+   "note": 74,
+   "on": false
+  },
+  {
+   "time": 19.45,
+   "note": 75,
+   "on": true
+  },
+  {
+   "time": 19.68,
+   "note": 75,
+   "on": false
+  },
+  {
+   "time": 19.7,
+   "note": 76,
+   "on": true
+  },
+  {
+   "time": 19.93,
+   "note": 76,
+   "on": false
+  },
+  {
+   "time": 19.95,
+   "note": 77,
+   "on": true
+  },
+  {
+   "time": 20.18,
+   "note": 77,
+   "on": false
+  },
+  {
+   "time": 20.2,
+   "note": 78,
+   "on": true
+  },
+  {
+   "time": 20.43,
+   "note": 78,
+   "on": false
+  },
+  {
+   "time": 20.45,
+   "note": 79,
+   "on": true
+  },
+  {
+   "time": 20.68,
+   "note": 79,
+   "on": false
+  },
+  {
+   "time": 20.7,
+   "note": 80,
+   "on": true
+  },
+  {
+   "time": 20.93,
+   "note": 80,
+   "on": false
+  },
+  {
+   "time": 20.95,
+   "note": 81,
+   "on": true
+  },
+  {
+   "time": 21.18,
+   "note": 81,
+   "on": false
+  },
+  {
+   "time": 21.2,
+   "note": 82,
+   "on": true
+  },
+  {
+   "time": 21.43,
+   "note": 82,
+   "on": false
+  },
+  {
+   "time": 21.45,
+   "note": 83,
+   "on": true
+  },
+  {
+   "time": 21.68,
+   "note": 83,
+   "on": false
+  },
+  {
+   "time": 21.7,
+   "note": 84,
+   "on": true
+  },
+  {
+   "time": 21.93,
+   "note": 84,
+   "on": false
+  },
+  {
+   "time": 21.95,
+   "note": 85,
+   "on": true
+  },
+  {
+   "time": 22.18,
+   "note": 85,
+   "on": false
+  },
+  {
+   "time": 22.2,
+   "note": 86,
+   "on": true
+  },
+  {
+   "time": 22.43,
+   "note": 86,
+   "on": false
+  },
+  {
+   "time": 22.45,
+   "note": 87,
+   "on": true
+  },
+  {
+   "time": 22.68,
+   "note": 87,
+   "on": false
+  },
+  {
+   "time": 22.7,
+   "note": 88,
+   "on": true
+  },
+  {
+   "time": 22.93,
+   "note": 88,
+   "on": false
+  },
+  {
+   "time": 22.95,
+   "note": 89,
+   "on": true
+  },
+  {
+   "time": 23.18,
+   "note": 89,
+   "on": false
+  },
+  {
+   "time": 23.2,
+   "note": 90,
+   "on": true
+  },
+  {
+   "time": 23.43,
+   "note": 90,
+   "on": false
+  },
+  {
+   "time": 23.45,
+   "note": 91,
+   "on": true
+  },
+  {
+   "time": 23.68,
+   "note": 91,
+   "on": false
+  },
+  {
+   "time": 23.7,
+   "note": 92,
+   "on": true
+  },
+  {
+   "time": 23.93,
+   "note": 92,
+   "on": false
+  },
+  {
+   "time": 23.95,
+   "note": 93,
+   "on": true
+  },
+  {
+   "time": 24.18,
+   "note": 93,
+   "on": false
+  },
+  {
+   "time": 24.2,
+   "note": 94,
+   "on": true
+  },
+  {
+   "time": 24.43,
+   "note": 94,
+   "on": false
+  },
+  {
+   "time": 24.45,
+   "note": 95,
+   "on": true
+  },
+  {
+   "time": 24.68,
+   "note": 95,
+   "on": false
+  },
+  {
+   "time": 24.7,
+   "note": 96,
+   "on": true
+  },
+  {
+   "time": 24.93,
+   "note": 96,
+   "on": false
+  }
+ ]
+}

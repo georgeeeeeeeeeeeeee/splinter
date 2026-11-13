@@ -23,7 +23,14 @@ inline constexpr std::string_view freezeId = "freeze", resetId = "reset", clockS
 inline constexpr std::string_view kClockSources[] = { "Internal", "Host", "Note" };   // Note: Stage 5
 inline constexpr std::string_view kFreezeModes[] = { "Latching", "Momentary" };
 
-inline constexpr int kStateVersion = 2;
+// Stage 2. The Bend / Break toggles are stored per mode (§3.7), as separate parameters so each has
+// its own automation lane: the UI's single button acts on the current mode's one.
+inline constexpr std::string_view modeId = "mode", bendId = "bend", breakId = "break", noteToSpeedId = "noteToSpeed";
+inline constexpr std::string_view bendOnMacroId = "bendOnMacro", bendOnMicroId = "bendOnMicro";
+inline constexpr std::string_view breakOnMacroId = "breakOnMacro", breakOnMicroId = "breakOnMicro";
+inline constexpr std::string_view kModes[] = { "Macro", "Micro" };
+
+inline constexpr int kStateVersion = 3;
 
 float dbToGain (float db) noexcept;
 } // namespace fault::params

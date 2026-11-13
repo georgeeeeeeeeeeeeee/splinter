@@ -39,6 +39,9 @@ for b in range(4 * BARS):
             place(snare, at + s * beat // 4, 0.35 + 0.1 * s)
 x = 0.8 * x / np.max(np.abs(x))
 wavfile.write(out / "drums.wav", SR, np.stack([x, x], axis=1).astype(np.float32))
+tt = np.arange(int(34 * SR)) / SR   # a steady 440 Hz for the pitch-tracking check
+tone = 0.4 * np.sin(2 * np.pi * 440 * tt)
+wavfile.write(out / "tone.wav", SR, np.stack([tone, tone], axis=1).astype(np.float32))
 if len(sys.argv) > 1 and Path(sys.argv[1]).exists():
     shutil.copy(sys.argv[1], out / "voice.wav")
 print("fixtures:", sorted(p.name for p in out.iterdir()))

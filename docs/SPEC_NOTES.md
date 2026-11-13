@@ -10,3 +10,10 @@ Behaviour inferred beyond the reference manual, with reasoning.
 - **N6. Repeats changes** take effect at the next slice boundary or tick, never mid-slice.
 - **N7. Width.** 0–100% maps the wet signal's side to ×0 … ×2. 50% is as recorded (the default), 0 is mono, 100% doubles the side.
 - **N8. Freeze modes.** Latching (the default) engages and releases on the next clock tick; Momentary acts at once. Freezing at Mix 0 forces fully wet until release (§3.1).
+- **N9. Micro Bend.** Speed = 2^(−3 + 6·Bend) octaves: the knob's centre is 1×, the ends ±3 octaves, smoothed over 20 ms in octaves. "On an exact octave" means within ±5 cents.
+- **N10. Note to Speed.** Reference C3 = MIDI 60 = 1× (Live's numbering), one octave per 12 semitones, added to Bend. Last note wins, and the pitch holds after note-off, like a CV that stays where it was left. Note changes jump at once, so they're in tune from the first sample. Gate notes (C1–F1 by default) never set the pitch.
+- **N11. Micro Break.** `breakOnMicro` off = Traverse, on = Silence.
+  - **Traverse:** slice = floor(Break × Repeats). A change jumps there at once, keeping the position within the slice like a CD skipping, with a fade-out tail and a fade-in.
+  - **Silence:** the last 90% × Break of each slice's playback is silent, with windowing fades at its edge.
+- **N12. Reverse** starts each new slice at its end. A direction change fades like a jump.
+- **N13. The slice envelope follows the head's position** in the slice, in playback direction, not the time since the slice began. With a speed change mid-slice (a new note), a time-based envelope fell silent until the next wrap. A position-based one stays right, and mid-slice jumps add a separate fade-in.
