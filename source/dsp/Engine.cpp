@@ -97,6 +97,38 @@ void Engine::clearGateState() noexcept
     bendFlip_ = { false, false };
     breakFlip_ = { false, false };
     corruptSteps_ = 0;
+    gateHeld_ = {};
+    corruptStepped_ = false;
+    heldMode_ = { 0, 0 };
+}
+
+void Engine::setGateNotes (const std::array<int, kNumGates>& n) noexcept
+{
+    for (int g = 0; g < kNumGates; ++g)
+        if (n[(size_t) g] != gateNotes_[(size_t) g] && gateHeld_[(size_t) g] > 0)
+        {
+            gateHeld_[(size_t) g] = 0;   // its note-off would no longer match
+            releaseGate (g);
+        }
+    gateNotes_ = n;
+}
+
+void Engine::releaseGate (int gate) noexcept
+{
+    if (base_.gateMode != GateMode::momentary)
+        return;
+    switch (gate)
+    {
+        case gateFreeze: freezeFlip_ = false; break;
+        case gateBend: bendFlip_[(size_t) heldMode_[0]] = false; break;
+        case gateBreak: breakFlip_[(size_t) heldMode_[1]] = false; break;
+        case gateCorrupt:
+            if (corruptStepped_) --corruptSteps_;
+            corruptStepped_ = false;
+            break;
+        default: break;
+    }
+    applyEffective();
 }
 
 Pcg32 Engine::tickRng (int stream, int64_t tickIndex) noexcept
@@ -252,6 +284,11 @@ bool Engine::handleNote (const NoteEvent& e) noexcept
 {
     if (e.cc)
     {
+        if (e.note == 120 || e.note == 123)   // All Sound Off / All Notes Off: every held gate lets go
+        {
+            for (int g = 0; g < kNumGates; ++g)
+                if (gateHeld_[(size_t) g] > 0) { gateHeld_[(size_t) g] = 0; releaseGate (g); }
+        }
         for (int c = 0; c < kNumCcLanes; ++c)
             if (base_.mod.ccNumbers[(size_t) c] == e.note)
                 ccTarget_[(size_t) c] = (float) std::clamp (e.velocity, 0, 127) / 127.0f;
@@ -268,31 +305,41 @@ bool Engine::handleNote (const NoteEvent& e) noexcept
         }
         return false;
     }
-    // A gate (never a pitch). Latching: each note-on flips the state. Momentary: flipped while held.
+    // A gate (never a pitch). Latching: each note-on flips the state. Momentary: flipped while any of
+    // its note-ons is still held; a note-off with none held is ignored, so a stray or doubled note-off
+    // can't leave a gate stuck the wrong way.
+    const int g = (int) (it - gateNotes_.begin());
+    auto& held = gateHeld_[(size_t) g];
+    if (! on)
+    {
+        if (held == 0) return false;
+        if (--held == 0) releaseGate (g);
+        return false;
+    }
+    const bool first = held++ == 0;
     const bool momentary = base_.gateMode == GateMode::momentary;
-    const auto flip = [&] (bool& f) {
-        if (momentary) f = on;
-        else if (on) f = ! f;
-    };
     const size_t modeIdx = base_.mode == Mode::micro ? 1 : 0;
     bool pulse = false;
-    switch ((int) (it - gateNotes_.begin()))
+    switch (g)
     {
-        case gateFreeze: flip (freezeFlip_); break;
-        case gateBend: flip (bendFlip_[modeIdx]); break;
-        case gateBreak: flip (breakFlip_[modeIdx]); break;
+        // Bend / Break flip the current mode's toggle. Momentary remembers which, so a mode switch
+        // mid-hold still lets the right one go on release.
+        case gateFreeze: freezeFlip_ = momentary ? true : ! freezeFlip_; break;
+        case gateBend:
+            if (! momentary) bendFlip_[modeIdx] = ! bendFlip_[modeIdx];
+            else if (first) { heldMode_[0] = (int) modeIdx; bendFlip_[modeIdx] = true; }
+            break;
+        case gateBreak:
+            if (! momentary) breakFlip_[modeIdx] = ! breakFlip_[modeIdx];
+            else if (first) { heldMode_[1] = (int) modeIdx; breakFlip_[modeIdx] = true; }
+            break;
         case gateCorrupt:
-            if (base_.corruptAsReset)
-            {
-                if (on) clock_.resync();
-            }
-            else if (on) ++corruptSteps_;            // the next type in the set
-            else if (momentary) --corruptSteps_;     // momentary: back on release
+            if (base_.corruptAsReset) clock_.resync();
+            else if (! momentary) ++corruptSteps_;                    // the next type in the set
+            else if (first) { ++corruptSteps_; corruptStepped_ = true; }   // momentary: back on release
             break;
-        case gateReset:
-            if (on) clock_.resync();
-            break;
-        case gateClock: pulse = on && p_.clock == ClockSource::note; break;
+        case gateReset: clock_.resync(); break;
+        case gateClock: pulse = p_.clock == ClockSource::note; break;
         default: break;
     }
     applyEffective();

@@ -44,3 +44,12 @@ Behaviour inferred beyond the reference manual, with reasoning.
 - **N38. Reset.** Internal: a new window at once. Host, playing: the division realigns so the next beat starts it, which matters for the slow divisions. Note: the division counter realigns so the next pulse ticks. A transport start (from a known stop) is a Reset too, and puts the host grid back on the bar. The Reset parameter acts at the start of its block; the gate is sample-accurate.
 - **N39. Buffer view, ghost.** The view grows with the window at once and shrinks towards it with a 0.9 s time constant, so for a moment after Time shrinks the older audio is still in view (dimmed, left of the window start). Very short windows are drawn from 32-sample buckets, so below about 0.3 s the waveform is a little blocky.
 - **N40. Drag-to-assign** reuses a route that already joins the source to that knob, else takes the first empty slot (Source or Dest None) at 50% depth. With all 8 in use it says so and changes nothing.
+- **N41. Momentary gates count their notes (Stage 7).** A momentary gate is held while any of its note-ons is still down. The rules:
+  - A doubled note-on steps Corrupt once, not twice.
+  - A note-off with nothing held is ignored.
+  - Bend and Break remember which mode's toggle they flipped, so switching mode mid-hold still lets the right one go.
+  - All Notes Off (CC 123) and All Sound Off (CC 120) release every held gate.
+  - A gate whose note number changes while it's held (by learning) is released.
+
+  Latching is unchanged: every note-on flips.
+- **N42. Hot inputs.** Nothing limits the output except Destroy. A full-scale square wave through the DJ Filter's high-pass side, or Vinyl's rumble filter, overshoots by up to about 9 dB. Width at 100% on unrelated left and right channels adds up to 6 dB more. The worst case found is +14 dBFS from a 0 dBFS input, and the fuzz never exceeded +24 dBFS. On real material the factory presets peak at or below about +0.1 dBFS.

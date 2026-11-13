@@ -434,3 +434,33 @@ TEST_CASE ("Everything modulated, gated and CC-driven is still bit-identical at 
     CHECK (a.r == c.r);
     for (size_t i = 0; i < a.l.size(); ++i) REQUIRE (std::isfinite (a.l[i]));
 }
+
+TEST_CASE ("Momentary gates can't stick: doubled notes, stray note-offs, mode switches, All Notes Off", "[stage7][gates]")
+{
+    const auto in = noise ((size_t) (1.0 * kSr));
+    dsp::EngineParams p;
+    p.clock = dsp::ClockSource::host;
+    p.mix = 1.0f;
+    p.gateMode = dsp::GateMode::momentary;
+
+    // Two note-ons of the Corrupt gate, two note-offs, then a stray one: one step, back on release.
+    const auto dup = run (in, p, fixedBlocks (480), { on (4800, kCorrupt), on (7200, kCorrupt), off (9600, kCorrupt), off (14400, kCorrupt), off (19200, kCorrupt) });
+    CHECK (atSample (dup, dup.corruptType, 8000) == 1);
+    CHECK (atSample (dup, dup.corruptType, 12000) == 1);   // one key still down
+    CHECK (atSample (dup, dup.corruptType, 16000) == 0);
+    CHECK (atSample (dup, dup.corruptType, 24000) == 0);   // the stray note-off doesn't step back again
+
+    // Bend held in Micro, released in Macro: Micro's Bend is back off when we return.
+    p.mode = dsp::Mode::micro;
+    const auto modes = run (in, p, fixedBlocks (480), { on (4800, kBend), off (14400, kBend) }, 0, [] (dsp::EngineParams& q, size_t pos) {
+        q.mode = (pos >= 9600 && pos < 19200) ? dsp::Mode::macro : dsp::Mode::micro;
+    });
+    CHECK (atSample (modes, modes.bendOn, 6000));
+    CHECK_FALSE (atSample (modes, modes.bendOn, 12000));   // Macro's Bend untouched
+    CHECK_FALSE (atSample (modes, modes.bendOn, 24000));   // Micro's let go
+
+    // All Notes Off (CC 123) releases a held gate.
+    const auto panic = run (in, p, fixedBlocks (480), { on (4800, kBreak), cc (9600, 123, 0) });
+    CHECK (atSample (panic, panic.breakOn, 6000));
+    CHECK_FALSE (atSample (panic, panic.breakOn, 12000));
+}

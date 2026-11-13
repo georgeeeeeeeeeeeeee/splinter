@@ -113,7 +113,10 @@ public:
     // Drops every gate's flipped state (Restore defaults). Any thread; taken up at the next block.
     void clearGates() noexcept { clearGates_.store (true, std::memory_order_release); }
     // Gate notes (Freeze, Bend, Break, Corrupt, Reset, Note clock: brief §3.10) never set the pitch.
-    void setGateNotes (const std::array<int, kNumGates>& n) noexcept { gateNotes_ = n; }
+    // A gate whose note changes while held is released. Audio thread (before process()).
+    void setGateNotes (const std::array<int, kNumGates>& n) noexcept;
+    // No gate is flipped and Corrupt hasn't been stepped (for the fuzz's stuck-gate check). Audio thread / offline.
+    bool gatesIdle() const noexcept { return ! freezeFlip_ && ! bendFlip_[0] && ! bendFlip_[1] && ! breakFlip_[0] && ! breakFlip_[1] && corruptSteps_ == 0; }
 
     // in and out may alias. Any n.
     void process (const float* inL, const float* inR, float* outL, float* outR, int n) noexcept;
@@ -186,6 +189,7 @@ private:
     void applyEffective() noexcept;                           // p_ = knobs + gates + modulation
     void updateModulation (int offsetInBlock) noexcept;       // on the control grid
     void clearGateState() noexcept;
+    void releaseGate (int gate) noexcept;   // momentary: the gate's last note is released
     void renderSegment (const float* inL, const float* inR, float* outL, float* outR, int from, int to) noexcept;
     void updateSpeed() noexcept;                              // per sample: Bend / note / reverse -> head speed
     double macroSpeed (Voice& v) noexcept;
@@ -245,6 +249,9 @@ private:
     bool freezeFlip_ = false;
     std::array<bool, 2> bendFlip_ {}, breakFlip_ {};   // per mode (Macro, Micro)
     int corruptSteps_ = 0;
+    std::array<int, kNumGates> gateHeld_ {};   // note-ons outstanding per gate (momentary: active while > 0)
+    bool corruptStepped_ = false;              // the held Corrupt gate stepped the type (so release steps back)
+    std::array<int, 2> heldMode_ {};           // the mode a held Bend / Break gate flipped (0 Macro, 1 Micro)
     int lastPlaying_ = -1;   // -1 unknown, so the first block isn't a "transport start"
     std::atomic<bool> clearGates_ { false };
     GateMode lastGateMode_ = GateMode::latching;

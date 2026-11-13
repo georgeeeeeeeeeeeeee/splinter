@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 
-project(Fault VERSION 0.0.1 LANGUAGES C CXX)
+project(Fault VERSION 0.9.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -75,6 +75,7 @@ target_link_libraries(Fault PRIVATE fault_plugin_code PUBLIC
 # ---- Tools + tests ----------------------------------------------------------
 add_subdirectory(tools/render)
 add_subdirectory(tools/presets)
+add_subdirectory(tools/harden)
 option(FAULT_BUILD_TESTS "Build DSP unit tests" ON)
 if(FAULT_BUILD_TESTS)
     enable_testing()

@@ -368,20 +368,39 @@ void FaultProcessor::getStateInformation (juce::MemoryBlock& dest)
 
 void FaultProcessor::setStateInformation (const void* data, int size)
 {
-    if (auto xml = getXmlFromBinary (data, size); xml != nullptr && xml->hasTagName (apvts.state.getType()))
+    // Any version's state (brief Stage 7). Parameters an older state didn't have take their defaults
+    // (APVTS does that); ones a newer state has that this version doesn't are ignored; a value that
+    // isn't a finite number takes the default; lists missing from an older state take their defaults.
+    auto xml = getXmlFromBinary (data, size);
+    if (xml == nullptr || ! xml->hasTagName (apvts.state.getType()))
+        return;
+    auto tree = juce::ValueTree::fromXml (*xml);
+    for (int i = tree.getNumChildren(); --i >= 0;)
     {
-        auto tree = juce::ValueTree::fromXml (*xml);
-        const auto readList = [&tree] (const char* key, auto& into, int lo, int hi) {
-            juce::StringArray a;
-            a.addTokens (tree.getProperty (key).toString(), ",", "");
-            for (int i = 0; i < (int) into.size() && i < a.size(); ++i)
-                into[(size_t) i].store (juce::jlimit (lo, hi, a[i].getIntValue()));
-        };
-        readList ("ccNumbers", ccNumbers, 0, 127);
-        readList ("gateNotes", gateNotes, 0, 127);
-        apvts.replaceState (tree);
-        presets_.setCurrentName (tree.getProperty ("preset", "Init").toString());
+        auto child = tree.getChild (i);
+        auto* prm = apvts.getParameter (child.getProperty ("id").toString());
+        if (prm == nullptr)
+            continue;
+        const auto text = child.getProperty ("value").toString().trim();
+        const double v = text.getDoubleValue();
+        const bool number = text.isNotEmpty() && text.containsOnly ("0123456789+-.eE") && std::isfinite (v);
+        const float plain = number ? (float) v : prm->convertFrom0to1 (prm->getDefaultValue());
+        child.setProperty ("value", prm->convertFrom0to1 (prm->convertTo0to1 (plain)), nullptr);   // clamped, snapped
     }
+    const auto readList = [&tree] (const char* key, auto& into, const int* defaults) {
+        juce::StringArray a;
+        a.addTokens (tree.getProperty (key).toString(), ",", "");
+        for (int i = 0; i < (int) into.size(); ++i)
+        {
+            const auto t = i < a.size() ? a[i].trim() : juce::String();
+            const bool ok = t.isNotEmpty() && t.containsOnly ("0123456789");
+            into[(size_t) i].store (ok ? juce::jlimit (0, 127, t.getIntValue()) : defaults[i]);
+        }
+    };
+    readList ("ccNumbers", ccNumbers, params::kDefaultCcNumbers);
+    readList ("gateNotes", gateNotes, params::kDefaultGateNotes);
+    apvts.replaceState (tree);
+    presets_.setCurrentName (tree.getProperty ("preset", "Init").toString());
 }
 
 int FaultProcessor::assignRoute (int source, int dest)

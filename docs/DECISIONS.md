@@ -69,3 +69,36 @@ Factory presets are `presets/<Category>/NN-name.json`, compiled in with `juce_ad
 
 ## D22 — `fault-presets`: the real processor offline
 A console tool that links the plug-in code. It renders each preset through `FaultProcessor::processBlock` with a fake playhead (120 BPM, playing) and reports peak and RMS against dry, failing on NaN/Inf or a peak over +6 dBFS. It also snapshots the editor to PNG (`--snapshot`, optionally with a drawer open), which is how the UI was checked without a display.
+
+## D23 — Loading state from any version (Stage 7)
+`setStateInformation` accepts the state of any version:
+- Parameters an older state lacks take their defaults (APVTS does this).
+- Parameters or properties a newer state has that this version doesn't know are ignored.
+- A value that isn't a finite number takes the parameter's default. Numbers are clamped and snapped to the parameter's range.
+- A CC-number or gate-note list that's missing or short fills from the defaults, and entries are clamped to 0–127.
+- Foreign, truncated or random data changes nothing.
+
+`tests/state/v6.xml` is a seeded, non-default state saved by this version, together with the exact values it must load as. Every later version adds its own fixture (`fault-harden --write-fixture tests/state/v<N>.xml`) and must still load all the earlier ones (`fault-harden --state`). Parameter IDs are never renamed. A change of meaning bumps `kStateVersion` and converts in `setStateInformation`.
+
+## D24 — `fault-harden` (Stage 7)
+A console tool on the real `FaultProcessor`:
+- `--state`: the round trips above.
+- `--fuzz`:
+  - It randomises everything at once: parameter jumps and ramps, MIDI (gate notes, stray note-offs, CCs, All Notes Off, pitch bend), transport (stops, loops, tempo jumps, no playhead), block sizes (0, 1, uneven, and twice the prepared size), sample rates from 22.05 to 192 kHz, and inputs from denormals to +12 dBFS.
+  - It fails on NaN/Inf, a peak over +24 dBFS, a momentary gate still flipped once every note is released, or any `operator new` inside `processBlock` (the tool replaces the global allocator to count them).
+  - Seeded, so a failure reproduces.
+- `--cpu`: processing time as a share of real time.
+- `--gain`: the loudest full-scale cases.
+
+Instruments needs full Xcode, which this Mac doesn't have. The CPU profile is therefore the benchmark, plus `sample` (Apple's command-line profiler) on the running benchmark for the hot spots.
+
+## D25 — Release builds (Stage 7)
+`scripts/release.sh` (Mac) and `scripts/release.ps1` (Windows) build into a separate `build-release` folder with `FAULT_DEV_TABLES=OFF`, so the shipped plug-in never watches the tuning file.
+
+The Mac script refuses to package if any of these fail:
+- `tuning/macro_tables.json` has changes not yet baked in.
+- A bundle isn't universal.
+- A bundle still references the tuning file.
+- pluginval fails, when it's installed.
+
+The bundles are ad-hoc signed and zipped with `docs/RELEASE_README.txt` into `dist/`. The version is set in `project()` in CMakeLists.txt (0.9.0 is the first release candidate).
