@@ -136,6 +136,26 @@ int runState (const juce::File& fixtures)
     }
     check (true, "20 random round trips (every parameter, CC numbers, gate notes, preset name)");
 
+    // 1b. Loading over raw, unsnapped values (pluginval's state test sets 0.31 on a bool): every
+    //     parameter must end up exactly where a fresh instance loading the same state does.
+    {
+        fault::FaultProcessor a, fresh;
+        randomise (a, rng);
+        const auto mb = stateOf (a);
+        fresh.setStateInformation (mb.getData(), (int) mb.getSize());
+        std::uniform_real_distribution<float> u (0.0f, 1.0f);
+        juce::String bad;
+        for (int trial = 0; trial < 20 && bad.isEmpty(); ++trial)
+        {
+            for (auto* r : allParams (a)) r->setValueNotifyingHost (u (rng));
+            a.setStateInformation (mb.getData(), (int) mb.getSize());
+            const auto pa = allParams (a), pf = allParams (fresh);
+            for (size_t i = 0; i < pa.size() && bad.isEmpty(); ++i)
+                if (std::abs (pa[i]->getValue() - pf[i]->getValue()) > 1.0e-5f) bad = pa[i]->paramID;
+        }
+        check (bad.isEmpty(), "loading over unsnapped values restores every parameter exactly" + (bad.isEmpty() ? juce::String() : " (" + bad + " didn't)"));
+    }
+
     // 2. An older version's state (only some parameters): the missing ones go to their defaults, not to
     //    whatever the instance had before.
     {
@@ -327,6 +347,14 @@ int runFuzz (double minutes, uint32_t seed)
     const auto chance = [&] (double p) { return std::uniform_real_distribution<double> (0.0, 1.0) (rng) < p; };
     std::uniform_real_distribution<float> u (0.0f, 1.0f);
 
+    {   // the allocation watch itself works (a size the optimiser can't know, so it can't elide it)
+        inAudio = true;
+        auto* probe = new std::vector<float> ((std::size_t) (256 + audioAllocs.load()));
+        probe->at (0) = 1.0f;
+        inAudio = false;
+        delete probe;
+        if (audioAllocs.exchange (0) < 1) { std::cout << "fuzz: the allocation watch isn't working" << std::endl; return 1; }
+    }
     fault::FaultProcessor p;
     auto params = allParams (p);
     auto* seedParam = p.getApvts().getParameter ("seed");

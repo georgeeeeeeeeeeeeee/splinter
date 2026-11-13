@@ -402,6 +402,16 @@ void FaultProcessor::setStateInformation (const void* data, int size)
     readList ("ccNumbers", ccNumbers, params::kDefaultCcNumbers);
     readList ("gateNotes", gateNotes, params::kDefaultGateNotes);
     apvts.replaceState (tree);
+    // APVTS skips a parameter whose snapped value already matches (a bool at a raw 0.31 "is" 0), which
+    // leaves the raw value, and the host's copy of it, stale. Set any that differ.
+    for (auto* q : getParameters())
+        if (auto* r = dynamic_cast<juce::RangedAudioParameter*> (q))
+            if (auto child = tree.getChildWithProperty ("id", r->getParameterID()); child.isValid())
+            {
+                const float target = r->convertTo0to1 ((float) (double) child.getProperty ("value"));
+                if (std::abs (r->getValue() - target) > 1.0e-6f)
+                    r->setValueNotifyingHost (target);
+            }
     presets_.setCurrentName (tree.getProperty ("preset", "Init").toString());
 }
 

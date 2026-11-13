@@ -77,6 +77,7 @@ A console tool that links the plug-in code. It renders each preset through `Faul
 - A value that isn't a finite number takes the parameter's default. Numbers are clamped and snapped to the parameter's range.
 - A CC-number or gate-note list that's missing or short fills from the defaults, and entries are clamped to 0–127.
 - Foreign, truncated or random data changes nothing.
+- After loading, any parameter whose value still differs from the saved one is set directly. APVTS skips a parameter whose snapped value already matches, so a bool at a raw 0.31 would otherwise stay at 0.31, and pluginval and hosts would see it unrestored. Refract had the same fault and failed pluginval's VST3 state test on some seeds. Fault passed only by luck until `--state` checked it.
 
 `tests/state/v6.xml` is a seeded, non-default state saved by this version, together with the exact values it must load as. Every later version adds its own fixture (`fault-harden --write-fixture tests/state/v<N>.xml`) and must still load all the earlier ones (`fault-harden --state`). Parameter IDs are never renamed. A change of meaning bumps `kStateVersion` and converts in `setStateInformation`.
 
