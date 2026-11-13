@@ -70,7 +70,7 @@ In Live: put Fault on an audio track, make a MIDI track, and set its MIDI To to 
 - **Knob readouts** speak the knob's language: Time as a note length (Host) or seconds/Hz (Internal), Bend as a zone and position (Macro) or octaves (Micro), Corrupt as the Decimate preset name, the filter frequency, and so on.
   - The lime ring on a knob shows where modulation has taken it.
 - **Mod drawer:** modulators with scopes, the envelope follower, CC lanes (learn), and the 8 routes. Drag a source chip onto any of the six knobs to route it (50% depth, or the existing route if there is one).
-- **Settings drawer:** windowing, width, stereo, seed, note-to-speed, attenuators, gate and freeze behaviour, Corrupt set and Corrupt-as-reset, gate notes (learn), Restore defaults, and a MIDI-in readout.
+- **Settings drawer:** windowing, width, stereo, seed, note-to-speed, attenuators, gate and freeze behaviour, Corrupt set and Corrupt-as-reset, Output clip (a safety clipper, on by default: untouched below −1 dBFS, never above 0 dBFS; "Clip" lights in the buffer view when it acts), gate notes (learn), Restore defaults, and a MIDI-in readout.
 - **Resizable:** fixed ratio, from 80% to 200% of 900 × 560.
 
 ## Presets

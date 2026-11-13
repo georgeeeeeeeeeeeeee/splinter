@@ -47,6 +47,8 @@ inline constexpr std::string_view kCorruptSets[] = { "All", "Original 3" };
 // numbers and gate notes are plug-in state, learnable, not parameters).
 inline constexpr std::string_view bendAttenId = "bendAtten", breakAttenId = "breakAtten", corruptAttenId = "corruptAtten";
 inline constexpr std::string_view gateModeId = "gateMode", corruptAsResetId = "corruptAsReset";
+// Stage 7: the output safety clipper, on by default.
+inline constexpr std::string_view safetyClipId = "safetyClip";
 inline constexpr std::string_view envAttackId = "envAttack", envReleaseId = "envRelease", envGainId = "envGain";
 inline constexpr std::string_view kGateModes[] = { "Latching", "Momentary" };
 inline constexpr std::string_view kModShapes[] = { "Sine", "Triangle", "Saw", "Square", "S&H", "Smooth Random" };
@@ -57,7 +59,7 @@ inline constexpr std::string_view kGateNames[] = { "Freeze", "Bend", "Break", "C
 inline constexpr int kDefaultGateNotes[] = { 36, 37, 38, 39, 40, 41 };   // C1 .. F1 (Live's numbering, C3 = 60)
 inline constexpr int kDefaultCcNumbers[] = { 1, 16, 17, 18 };            // mod wheel, then general purpose 1-3
 
-inline constexpr int kStateVersion = 6;
+inline constexpr int kStateVersion = 7;   // 7: safetyClip (Stage 7)
 
 float dbToGain (float db) noexcept;
 } // namespace fault::params

@@ -1,4 +1,5 @@
 #include "dsp/Engine.h"
+#include "dsp/SafetyClip.h"
 
 #include "dsp/SliceEnvelope.h"
 
@@ -710,6 +711,12 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
         clock_.beginBlock (t, end - i, pulse);
         renderSegment (inL, inR, outL, outR, i, end);
         i = end;
+    }
+    if (p_.safetyClip)
+    {
+        bool hit = SafetyClip::process (outL, n);
+        if (outR != outL) hit = SafetyClip::process (outR, n) || hit;
+        if (hit) status_.clips.store (status_.clips.load (std::memory_order_relaxed) + 1, std::memory_order_relaxed);
     }
     processed_ += n;
     numNotes_ = 0;

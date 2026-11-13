@@ -87,8 +87,9 @@ in the User section:
 GOOD TO KNOW
 ------------
 - There's no latency, and the dry signal passes straight through.
-- Some combinations are loud. Very resonant DJ Filter settings, Vinyl, and Width at 100% on a hot
-  input can all push peaks well above the input level. Keep an eye on your meters, or put a limiter
-  after Fault.
+- Output clip (Settings, on by default) keeps the output at or below 0 dBFS. Below -1 dBFS it does
+  nothing; above that it rounds peaks off. "Clip" lights in the buffer view when it acts. Some
+  combinations are loud (resonant DJ Filter, Vinyl and Width at 100% on a hot input), so leave it
+  on unless a limiter follows Fault.
 - Fault's controls are host-automatable. Saved sessions recall every knob, the learnt CC numbers
   and gate notes, and the preset name.

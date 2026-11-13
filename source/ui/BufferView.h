@@ -31,6 +31,8 @@ private:
     std::array<uint32_t, 2> jumps {};
     std::array<float, 2> jumpFlash {};
     uint64_t ticks = 0;
+    uint32_t clips = 0;
+    float clipFlash = 0.0f;   // the safety clipper acted (held ~0.5 s)
     float tickFlash = 0.0f;
     bool frozen = false;
     double lastMs = 0.0;

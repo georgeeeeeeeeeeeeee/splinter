@@ -92,6 +92,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
     pctParam (toJuce (params::corruptAttenId), "Corrupt Atten", 0.0f, 100.0f);
     choice (toJuce (params::gateModeId), "Gate Mode", names ({ params::kGateModes[0], params::kGateModes[1] }), 0);
     l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (params::corruptAsResetId), 1 }, "Corrupt As Reset", false));
+    l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (params::safetyClipId), 1 }, "Output Clip", true));
 
     juce::StringArray shapes, syncs { "Free" }, polar, sources, dests;
     for (auto x : params::kModShapes) shapes.add (toJuce (x));
@@ -148,7 +149,7 @@ FaultProcessor::FaultProcessor()
             get (params::stereoModeId), get (params::seedId),
             get (params::corruptId), get (params::corruptTypeId), get (params::corruptSetId),
             get (params::bendAttenId), get (params::breakAttenId), get (params::corruptAttenId), get (params::gateModeId), get (params::corruptAsResetId),
-            get (params::envAttackId), get (params::envReleaseId), get (params::envGainId) };
+            get (params::envAttackId), get (params::envReleaseId), get (params::envGainId), get (params::safetyClipId) };
     const auto getS = [this] (const juce::String& id) { return apvts.getRawParameterValue (id); };
     for (int m = 0; m < dsp::kNumModulators; ++m)
     {
@@ -235,6 +236,7 @@ dsp::EngineParams FaultProcessor::readParams() const noexcept
     p.mod.corruptAtten = raw.corruptAtten->load() * 0.01f;
     p.gateMode = raw.gateMode->load() > 0.5f ? dsp::GateMode::momentary : dsp::GateMode::latching;
     p.corruptAsReset = raw.corruptAsReset->load() > 0.5f;
+    p.safetyClip = raw.safetyClip->load() > 0.5f;
     p.mod.env = { raw.envAttack->load(), raw.envRelease->load(), raw.envGain->load() };
     for (int m = 0; m < dsp::kNumModulators; ++m)
     {
@@ -384,8 +386,8 @@ void FaultProcessor::setStateInformation (const void* data, int size)
         const auto text = child.getProperty ("value").toString().trim();
         const double v = text.getDoubleValue();
         const bool number = text.isNotEmpty() && text.containsOnly ("0123456789+-.eE") && std::isfinite (v);
-        const float plain = number ? (float) v : prm->convertFrom0to1 (prm->getDefaultValue());
-        child.setProperty ("value", prm->convertFrom0to1 (prm->convertTo0to1 (plain)), nullptr);   // clamped, snapped
+        if (! number)   // (numbers out of range are clamped by the parameter itself; rewriting them would drift)
+            child.setProperty ("value", prm->convertFrom0to1 (prm->getDefaultValue()), nullptr);
     }
     const auto readList = [&tree] (const char* key, auto& into, const int* defaults) {
         juce::StringArray a;
@@ -438,6 +440,7 @@ void FaultProcessor::restoreDefaults()
     set (toJuce (params::gateModeId), 0.0f);
     set (toJuce (params::freezeButtonModeId), 0.0f);
     set (toJuce (params::corruptAsResetId), 0.0f);
+    set (toJuce (params::safetyClipId), 1.0f);
     for (int r = 1; r <= dsp::kNumRoutes; ++r)
     {
         set ("route" + juce::String (r) + "Source", 0.0f);

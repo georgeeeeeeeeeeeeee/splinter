@@ -102,3 +102,12 @@ The Mac script refuses to package if any of these fail:
 - pluginval fails, when it's installed.
 
 The bundles are ad-hoc signed and zipped with `docs/RELEASE_README.txt` into `dist/`. The version is set in `project()` in CMakeLists.txt (0.9.0 is the first release candidate).
+
+## D26 — The output safety clipper is a parameter, on by default (Stage 7)
+George asked for it after the gain scan found +14 dBFS peaks from full-scale squares (N42).
+
+It's a parameter rather than always on, so float-headroom setups can bypass it. It's on by default, so a new instance is safe. Its threshold is −1 dBFS, which keeps it clear of normal material: the loudest factory preset peaks at −0.6 dBFS.
+
+Adding the parameter bumped `kStateVersion` to 7, with a new fixture `tests/state/v7.xml`. v6 states load with the clipper on.
+
+The fuzz now also fails on any sample over 0 dBFS while the clipper is on.

@@ -124,11 +124,17 @@ int runState (const juce::File& fixtures)
         b.setStateInformation (mb.getData(), (int) mb.getSize());
         if (describe (a) != describe (b) || stateOf (b) != mb)
         {
+            juce::StringArray x, y;
+            x.addLines (describe (a));
+            y.addLines (describe (b));
+            for (int i = 0; i < x.size(); ++i)
+                if (x[i] != y[i]) std::cout << "    " << x[i] << "  vs  " << y[i] << std::endl;
+            if (describe (a) == describe (b)) std::cout << "    (values match; the saved bytes differ)" << std::endl;
             check (false, "round trip " + juce::String (trial));
             return 1;
         }
     }
-    check (true, "20 random round trips (all 78 parameters, CC numbers, gate notes, preset name)");
+    check (true, "20 random round trips (every parameter, CC numbers, gate notes, preset name)");
 
     // 2. An older version's state (only some parameters): the missing ones go to their defaults, not to
     //    whatever the instance had before.
@@ -334,7 +340,9 @@ int runFuzz (double minutes, uint32_t seed)
     const auto start = Clock::now();
     const auto deadline = start + std::chrono::duration<double> (minutes * 60.0);
     double audioSeconds = 0.0;
-    float worstPeak = 0.0f;
+    float worstPeak = 0.0f, worstClipped = 0.0f;   // overall; with the safety clipper on
+    int64_t clipOvers = 0;
+    auto* clipParam = p.getApvts().getParameter ("safetyClip");
     int64_t nonFinite = 0, overs = 0, stuck = 0, episodes = 0, blocks = 0, notes = 0, prepares = 0;
     juce::String firstProblem;
     double worstGain = 0.0;
@@ -440,6 +448,7 @@ int runFuzz (double minutes, uint32_t seed)
                 thisPeak = std::max ({ thisPeak, std::abs (view.getSample (0, s)), std::abs (view.getSample (1, s)) });
                 inPeak = std::max (inPeak, thisPeak);
             }
+            const bool clipOn = clipParam->getValue() > 0.5f;
             inAudio = true;
             p.processBlock (view, midi);
             inAudio = false;
@@ -450,6 +459,11 @@ int runFuzz (double minutes, uint32_t seed)
                     if (! std::isfinite (v)) { ++nonFinite; problem ("NaN/Inf output"); continue; }
                     const float a = std::abs (v);
                     worstPeak = std::max (worstPeak, a);
+                    if (clipOn)
+                    {
+                        worstClipped = std::max (worstClipped, a);
+                        if (a > 1.0f) { ++clipOvers; problem ("over 0 dBFS with the clipper on"); }
+                    }
                     if (a > 0.25f && a / inPeak > worstGain)
                     {
                         worstGain = a / inPeak;
@@ -492,6 +506,7 @@ int runFuzz (double minutes, uint32_t seed)
     std::cout << "Fuzz, seed " << seed << ": " << episodes << " sessions (" << prepares << " prepares), " << blocks << " blocks, "
               << notes << " note-ons, " << juce::String (audioSeconds / 60.0, 1) << " min of audio in " << juce::String (wall / 60.0, 1) << " min\n"
               << "  worst peak     " << juce::String (20.0 * std::log10 (std::max (1.0e-9f, worstPeak)), 1) << " dBFS (limit +24)\n"
+              << "  worst peak, clipper on   " << juce::String (20.0 * std::log10 (std::max (1.0e-9f, worstClipped)), 2) << " dBFS (limit 0)\n"
               << "  NaN/Inf        " << nonFinite << "\n"
               << "  over +24 dBFS  " << overs << "\n"
               << "  stuck gates    " << stuck << "\n"
@@ -499,7 +514,7 @@ int runFuzz (double minutes, uint32_t seed)
     if (args_verbose) std::cout << "  most gain over the input peak  " << juce::String (20.0 * std::log10 (std::max (1.0e-9, worstGain)), 1) << " dB" << std::endl;
     if (args_verbose) std::cout << "    " << worstGainWhere << std::endl;
     if (firstProblem.isNotEmpty()) std::cout << "  first problem: " << firstProblem << std::endl;
-    const bool ok = nonFinite == 0 && overs == 0 && stuck == 0 && audioAllocs.load() == 0;
+    const bool ok = nonFinite == 0 && overs == 0 && clipOvers == 0 && stuck == 0 && audioAllocs.load() == 0;
     std::cout << (ok ? "fuzz: passed" : "fuzz: FAILED") << std::endl;
     return ok ? 0 : 1;
 }

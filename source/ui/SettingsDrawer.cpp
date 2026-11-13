@@ -39,6 +39,7 @@ SettingsDrawer::SettingsDrawer (FaultProcessor& p) : proc (p)
     right.push_back (combo ("freezeButtonMode", "Freeze button"));
     right.push_back (combo ("corruptSet", "Corrupt set"));
     right.push_back (toggle ("corruptAsReset", "Corrupt gate resets", colours::corrupt));
+    right.push_back (toggle ("safetyClip", "Output clip (0 dBFS)", colours::corrupt));
     for (auto& c : left) addAndMakeVisible (*c);
     for (auto& c : right) addAndMakeVisible (*c);
     for (int g = 0; g < dsp::kNumGates; ++g)

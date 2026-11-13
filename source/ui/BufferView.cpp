@@ -29,6 +29,10 @@ void BufferView::tick()
     if (t != ticks) tickFlash = 1.0f;
     ticks = t;
     tickFlash *= (float) std::exp (-dt / 0.09);
+    const auto c = st.clips.load (std::memory_order_relaxed);
+    if (c != clips) clipFlash = 1.0f;
+    clips = c;
+    clipFlash = std::max (0.0f, clipFlash - (float) dt * 2.0f);
 
     // The view grows at once with the window and shrinks slowly, so the older audio stays visible (as a
     // ghost) for a moment when Time shrinks.
@@ -68,6 +72,9 @@ void BufferView::paint (juce::Graphics& g)
     const auto fmt = [] (float s) { return (s < 0.0f ? "-" : "") + juce::String (std::abs (s), 2) + "x"; };
     drawCaption (g, "L " + fmt (speed[0]) + "   R " + fmt (speed[1]), getLocalBounds().reduced (12, 4).removeFromBottom (16), colours::dim,
                  juce::Justification::centredRight);
+    if (clipFlash > 0.0f)
+        drawCaption (g, "Clip", getLocalBounds().reduced (12, 4).removeFromBottom (16), colours::corrupt.withAlpha (std::min (1.0f, 2.0f * clipFlash)),
+                     juce::Justification::centredLeft);
     if (frozen)
         drawCaption (g, "Frozen", getLocalBounds().reduced (12, 4).removeFromTop (16), colours::freeze, juce::Justification::centredRight);
     // The tick lamp.

@@ -14,6 +14,7 @@
 //     "bendZone": 3, "bendZonePos": 0.5, "breakZone": 2, "breakZonePos": 0.9,   // knob from the tables' zones
 //     "corrupt": 0.5, "corruptType": "decimate"|"dropout"|"destroy"|"djfilter"|"vinyl", "corruptSet": "all"|"original3" }
 //   Stage 5: "clock": "note", "gateMode": "latching"|"momentary", "corruptAsReset": false,
+//   Stage 7: "safetyClip": true (the output clipper; on by default, as in the plug-in),
 //     "bendAtten" / "breakAtten" / "corruptAtten": 0..1, "gateNotes": [36, 37, 38, 39, 40, 41],
 //     "mods": [ { "shape": "sine"|"triangle"|"saw"|"square"|"sh"|"smooth", "rate": 1.0, "sync": "free"|"1/16"|...,
 //                 "phase": 0..1, "polarity": "bi"|"uni" }, ... ],
@@ -132,6 +133,7 @@ bool apply (fault::dsp::EngineParams& p, const juce::String& key, const juce::va
     else if (key == "corruptSet") p.corruptSet = v.toString().containsIgnoreCase ("3") || v.toString().startsWithIgnoreCase ("orig") ? CorruptSet::original3 : CorruptSet::all;
     else if (key == "gateMode") p.gateMode = v.toString() == "momentary" ? GateMode::momentary : GateMode::latching;
     else if (key == "corruptAsReset") p.corruptAsReset = (bool) v;
+    else if (key == "safetyClip") p.safetyClip = (bool) v;
     else if (key == "bendAtten") p.mod.bendAtten = (float) (double) v;
     else if (key == "breakAtten") p.mod.breakAtten = (float) (double) v;
     else if (key == "corruptAtten") p.mod.corruptAtten = (float) (double) v;

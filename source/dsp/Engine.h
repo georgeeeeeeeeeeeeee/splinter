@@ -61,6 +61,8 @@ struct EngineParams
     ModParams mod {};
     GateMode gateMode = GateMode::latching;   // latching: each note-on flips; momentary: flipped while held
     bool corruptAsReset = false;              // the Corrupt gate acts as Reset
+    // Stage 7: the output safety clipper (transparent to -1 dBFS, never past 0 dBFS).
+    bool safetyClip = true;
 };
 
 // A MIDI note (or CC) for the engine, at a sample offset in the next process() block.
@@ -151,6 +153,7 @@ public:
         std::array<std::atomic<uint32_t>, 2> jumps {};       // slice jumps (Traverse, Macro jump)
         std::atomic<int64_t> written { 0 };
         std::atomic<int> clockStep { 4 };
+        std::atomic<uint32_t> clips { 0 };   // blocks in which the safety clipper acted
     };
     const Overview& overview() const noexcept { return overview_; }
     const Status& status() const noexcept { return status_; }

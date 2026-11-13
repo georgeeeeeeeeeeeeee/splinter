@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<FaultStateFixture note="Saved by Fault 0.9.0; never edit. &lt;expect&gt; is what it must load as.">
+  <FaultState stateVersion="7" ccNumbers="14,7,32,7" gateNotes="66,20,61,36,32,84"
+              preset="Fixture">
+    <PARAM id="bend" value="0.9875504970550537"/>
+    <PARAM id="bendAtten" value="39.73009872436523"/>
+    <PARAM id="bendOnMacro" value="0.0"/>
+    <PARAM id="bendOnMicro" value="1.0"/>
+    <PARAM id="break" value="0.6218571662902832"/>
+    <PARAM id="breakAtten" value="67.78651428222656"/>
+    <PARAM id="breakOnMacro" value="1.0"/>
+    <PARAM id="breakOnMicro" value="0.0"/>
+    <PARAM id="cc1Polarity" value="1.0"/>
+    <PARAM id="cc2Polarity" value="0.0"/>
+    <PARAM id="cc3Polarity" value="1.0"/>
+    <PARAM id="cc4Polarity" value="0.0"/>
+    <PARAM id="clockSource" value="2.0"/>
+    <PARAM id="corrupt" value="0.7614642977714539"/>
+    <PARAM id="corruptAsReset" value="1.0"/>
+    <PARAM id="corruptAtten" value="29.59673118591309"/>
+    <PARAM id="corruptSet" value="1.0"/>
+    <PARAM id="corruptType" value="1.0"/>
+    <PARAM id="envAttack" value="4.156790733337402"/>
+    <PARAM id="envGain" value="22.4095573425293"/>
+    <PARAM id="envRelease" value="2961.91015625"/>
+    <PARAM id="freeze" value="1.0"/>
+    <PARAM id="freezeButtonMode" value="1.0"/>
+    <PARAM id="gateMode" value="1.0"/>
+    <PARAM id="mix" value="41.30117416381836"/>
+    <PARAM id="mod1Phase" value="294.495849609375"/>
+    <PARAM id="mod1Polarity" value="1.0"/>
+    <PARAM id="mod1Rate" value="19.19850540161133"/>
+    <PARAM id="mod1Shape" value="0.0"/>
+    <PARAM id="mod1Sync" value="8.0"/>
+    <PARAM id="mod2Phase" value="250.0175018310547"/>
+    <PARAM id="mod2Polarity" value="0.0"/>
+    <PARAM id="mod2Rate" value="0.7098332047462463"/>
+    <PARAM id="mod2Shape" value="1.0"/>
+    <PARAM id="mod2Sync" value="5.0"/>
+    <PARAM id="mod3Phase" value="6.50410795211792"/>
+    <PARAM id="mod3Polarity" value="0.0"/>
+    <PARAM id="mod3Rate" value="0.01160645205527544"/>
+    <PARAM id="mod3Shape" value="5.0"/>
+    <PARAM id="mod3Sync" value="1.0"/>
+    <PARAM id="mod4Phase" value="231.4429016113281"/>
+    <PARAM id="mod4Polarity" value="1.0"/>
+    <PARAM id="mod4Rate" value="0.1256650239229202"/>
+    <PARAM id="mod4Shape" value="1.0"/>
+    <PARAM id="mod4Sync" value="1.0"/>
+    <PARAM id="mode" value="0.0"/>
+    <PARAM id="noteToSpeed" value="1.0"/>
+    <PARAM id="repeats" value="14.0"/>
+    <PARAM id="reset" value="0.0"/>
+    <PARAM id="route1Depth" value="-93.3255615234375"/>
+    <PARAM id="route1Dest" value="3.0"/>
+    <PARAM id="route1Source" value="5.0"/>
+    <PARAM id="route2Depth" value="75.87663269042969"/>
+    <PARAM id="route2Dest" value="6.0"/>
+    <PARAM id="route2Source" value="6.0"/>
+    <PARAM id="route3Depth" value="51.85934448242188"/>
+    <PARAM id="route3Dest" value="4.0"/>
+    <PARAM id="route3Source" value="6.0"/>
+    <PARAM id="route4Depth" value="-6.598889827728271"/>
+    <PARAM id="route4Dest" value="3.0"/>
+    <PARAM id="route4Source" value="5.0"/>
+    <PARAM id="route5Depth" value="46.50757217407227"/>
+    <PARAM id="route5Dest" value="2.0"/>
+    <PARAM id="route5Source" value="0.0"/>
+    <PARAM id="route6Depth" value="14.89396095275879"/>
+    <PARAM id="route6Dest" value="4.0"/>
+    <PARAM id="route6Source" value="5.0"/>
+    <PARAM id="route7Depth" value="-41.24030303955078"/>
+    <PARAM id="route7Dest" value="3.0"/>
+    <PARAM id="route7Source" value="3.0"/>
+    <PARAM id="route8Depth" value="-9.823286056518555"/>
+    <PARAM id="route8Dest" value="5.0"/>
+    <PARAM id="route8Source" value="2.0"/>
+    <PARAM id="safetyClip" value="1.0"/>
+    <PARAM id="seed" value="78322.0"/>
+    <PARAM id="stereoMode" value="0.0"/>
+    <PARAM id="time" value="0.2193456292152405"/>
+    <PARAM id="width" value="47.92898559570312"/>
+    <PARAM id="windowing" value="49.98980712890625"/>
+  </FaultState>
+  <expect>
+time=0.21935
+repeats=0.76147
+mix=0.41301
+freeze=1.00000
+freezeButtonMode=1.00000
+clockSource=1.00000
+reset=0.00000
+windowing=0.70703
+width=0.47929
+mode=0.00000
+bend=0.98755
+break=0.62186
+bendOnMacro=0.00000
+bendOnMicro=1.00000
+breakOnMacro=1.00000
+breakOnMicro=0.00000
+noteToSpeed=1.00000
+stereoMode=0.00000
+seed=0.78323
+corrupt=0.76146
+corruptType=0.25000
+corruptSet=1.00000
+bendAtten=0.39730
+breakAtten=0.67787
+corruptAtten=0.29597
+gateMode=1.00000
+corruptAsReset=1.00000
+safetyClip=1.00000
+mod1Shape=0.00000
+mod1Rate=0.83229
+mod1Sync=0.47059
+mod1Phase=0.81804
+mod1Polarity=1.00000
+mod2Shape=0.20000
+mod2Rate=0.36371
+mod2Sync=0.29412
+mod2Phase=0.69449
+mod2Polarity=0.00000
+mod3Shape=1.00000
+mod3Rate=0.07961
+mod3Sync=0.05882
+mod3Phase=0.01807
+mod3Polarity=0.00000
+mod4Shape=0.20000
+mod4Rate=0.23191
+mod4Sync=0.05882
+mod4Phase=0.64290
+mod4Polarity=1.00000
+envAttack=0.23593
+envRelease=0.85460
+envGain=0.96687
+cc1Polarity=1.00000
+cc2Polarity=0.00000
+cc3Polarity=1.00000
+cc4Polarity=0.00000
+route1Source=0.55556
+route1Dest=0.50000
+route1Depth=0.03337
+route2Source=0.66667
+route2Dest=1.00000
+route2Depth=0.87938
+route3Source=0.66667
+route3Dest=0.66667
+route3Depth=0.75930
+route4Source=0.55556
+route4Dest=0.50000
+route4Depth=0.46701
+route5Source=0.00000
+route5Dest=0.33333
+route5Depth=0.73254
+route6Source=0.55556
+route6Dest=0.66667
+route6Depth=0.57447
+route7Source=0.33333
+route7Dest=0.50000
+route7Depth=0.29380
+route8Source=0.22222
+route8Dest=0.83333
+route8Depth=0.45088
+cc 14
+cc 7
+cc 32
+cc 7
+gate 66
+gate 20
+gate 61
+gate 36
+gate 32
+gate 84
+preset Fixture
+</expect>
+</FaultStateFixture>
