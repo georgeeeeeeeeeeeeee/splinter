@@ -11,7 +11,9 @@
 //     "mode": "macro"|"micro", "bend": 0.5, "break": 0, "reverse": false, "silence": false, "noteToSpeed": false,
 //     "midi": [ { "time": 1.0, "note": 60, "on": true, "velocity": 100 }, ... ],    // sample-accurate
 //     "bendOnMacro": true, "breakOnMacro": true, "stereo": "unique"|"shared", "seed": 0, "sessionSeed": 1,
-//     "bendZone": 3, "bendZonePos": 0.5, "breakZone": 2, "breakZonePos": 0.9 }   // knob from the tables' zones
+//     "bendZone": 3, "bendZonePos": 0.5, "breakZone": 2, "breakZonePos": 0.9,   // knob from the tables' zones
+//     "corrupt": 0.5, "corruptType": "decimate"|"dropout"|"destroy"|"djfilter"|"vinyl", "corruptSet": "all"|"original3" }
+//   automation ramps: { "time": 1.0, "param": "corrupt", "value": 0, "to": 1, "duration": 4 }   (1 ms steps)
 //
 //   --tables tuning/macro_tables.json      Macro tables to use (default: the compiled-in ones)
 //   fault-render --write-tables out.json   writes the compiled-in tables as JSON
@@ -64,6 +66,15 @@ bool apply (fault::dsp::EngineParams& p, const juce::String& key, const juce::va
     else if (key == "noteToSpeed") p.noteToSpeed = (bool) v;
     else if (key == "stereo" || key == "stereoMode") p.stereo = v.toString() == "shared" ? StereoMode::shared : StereoMode::unique;
     else if (key == "seed") p.seed = (int) v;
+    else if (key == "corrupt") p.corrupt = (float) (double) v;
+    else if (key == "corruptType")
+    {
+        const juce::StringArray names { "decimate", "dropout", "destroy", "djfilter", "vinyl" };
+        const int i = v.isString() ? names.indexOf (v.toString().toLowerCase().removeCharacters (" _-")) : (int) v;
+        if (i < 0 || i >= fault::dsp::kNumCorruptTypes) return false;
+        p.corruptType = (CorruptType) i;
+    }
+    else if (key == "corruptSet") p.corruptSet = v.toString().containsIgnoreCase ("3") || v.toString().startsWithIgnoreCase ("orig") ? CorruptSet::original3 : CorruptSet::all;
     else if (key == "sessionSeed") sessionSeed = (uint64_t) (juce::int64) v;
     else if (key == "bendZone") zr.bendZone = (int) v;
     else if (key == "bendZonePos") zr.bendPos = (float) (double) v;
@@ -170,10 +181,25 @@ int main (int argc, char* argv[])
             else if (k == "tail") tail = prop.value;
             else if (k == "length") length = prop.value;   // use only the first `length` seconds of the input
             else if (k == "midi") { for (const auto& e : *prop.value.getArray()) midi.push_back ({ (double) e["time"], (int) e["note"], (int) e.getProperty ("velocity", 100), (bool) e.getProperty ("on", true) }); }
-            else if (k == "automation") { for (const auto& e : *prop.value.getArray()) events.push_back ({ (double) e["time"], e["param"].toString(), e["value"] }); }
+            else if (k == "automation")
+            {
+                for (const auto& e : *prop.value.getArray())
+                {
+                    // A ramp: { "time": 1, "param": "corrupt", "value": 0, "to": 1, "duration": 4 } steps every 1 ms.
+                    if (e.hasProperty ("to") && (double) e.getProperty ("duration", 0.0) > 0.0)
+                    {
+                        const double t0 = e["time"], dur = e["duration"], a = e["value"], b = e["to"];
+                        const int steps = std::max (1, (int) std::ceil (dur * 1000.0));
+                        for (int i = 0; i <= steps; ++i)
+                            events.push_back ({ t0 + dur * i / steps, e["param"].toString(), a + (b - a) * i / steps });
+                    }
+                    else
+                        events.push_back ({ (double) e["time"], e["param"].toString(), e["value"] });
+                }
+            }
             else if (! apply (p, k, prop.value, zr, sessionSeed)) return fail ("unknown key '" + k + "'");
         }
-        std::sort (events.begin(), events.end(), [] (const Event& a, const Event& b) { return a.time < b.time; });
+        std::stable_sort (events.begin(), events.end(), [] (const Event& a, const Event& b) { return a.time < b.time; });
         std::stable_sort (midi.begin(), midi.end(), [] (const Midi& a, const Midi& b) { return a.time < b.time; });
     }
     resolveZones();

@@ -2,6 +2,15 @@
 
 namespace fault
 {
+namespace
+{
+juce::String corruptName (int t)
+{
+    const char* n[] = { "Decimate", "Dropout", "Destroy", "DJ Filter", "Vinyl" };
+    return t >= 0 && t < 5 ? juce::String (n[t]) : juce::String ("off");
+}
+} // namespace
+
 FaultEditor::FaultEditor (FaultProcessor& p) : AudioProcessorEditor (p), proc (p)
 {
     for (auto* prm : p.getParameters())
@@ -49,7 +58,7 @@ FaultEditor::FaultEditor (FaultProcessor& p) : AudioProcessorEditor (p), proc (p
     addAndMakeVisible (log);
     counts.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (counts);
-    setSize (620, 760);
+    setSize (620, 840);
     startTimerHz (30);
 }
 
@@ -61,7 +70,7 @@ void FaultEditor::paint (juce::Graphics& g)
     g.drawText ("FAULT", 16, 10, 200, 28, juce::Justification::centredLeft);
     g.setColour (juce::Colours::grey);
     g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("Stage 3 debug UI  v" JucePlugin_VersionString, 200, 10, 344, 28, juce::Justification::centredRight);
+    g.drawText ("Stage 4 debug UI  v" JucePlugin_VersionString, 200, 10, 344, 28, juce::Justification::centredRight);
 }
 
 void FaultEditor::resized()
@@ -105,7 +114,8 @@ void FaultEditor::timerCallback()
     tablesInfo.setText (proc.tablesStatus(), juce::dontSendNotification);
     tickInfo.setText ("ticks " + juce::String ((juce::int64) proc.engine().ticksWritten()) + "   window " + juce::String (w.length / proc.engine().sampleRate(), 3)
                           + " s   slices " + juce::String (w.repeats) + "   speed L " + juce::String (proc.engine().status().speed.load(), 2)
-                          + "x  R " + juce::String (proc.engine().status().speedR.load(), 2) + "x" + (proc.engine().buffer().frozen() ? "   FROZEN" : ""),
+                          + "x  R " + juce::String (proc.engine().status().speedR.load(), 2) + "x" + (proc.engine().buffer().frozen() ? "   FROZEN" : "")
+                          + "   corrupt " + corruptName (proc.engine().status().corrupt.load()),
                       juce::dontSendNotification);
     counts.setText ("note-ons " + juce::String (proc.counts[0].load()) + "   note-offs " + juce::String (proc.counts[1].load())
                         + "   CCs " + juce::String (proc.counts[2].load()) + "   pitch bends " + juce::String (proc.counts[3].load()),

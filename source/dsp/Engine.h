@@ -4,13 +4,14 @@
 //
 // Per sample: write the input into the RecordBuffer (unless frozen) -> clock ticks capture a new window
 // (the most recent `period` samples) -> each channel's voice loops its slice (Repeats) -> SliceEnvelope
-// and silence -> Mix (equal-power) with Width (M/S) on the wet.
+// and silence -> Corrupt -> Width (M/S) on the wet -> Mix (equal-power).
 // Two voices, one per channel. In Micro mode, and in Macro with Shared stereo, they get the same
 // decisions; in Macro with Unique stereo each rolls its own dice (brief §3.6).
 // A jump (new window, slice change, reset) that lands mid-slice hands the old head to a short fade-out
 // tail, so only windowing 0 cuts hard.
 
 #include "dsp/Clock.h"
+#include "dsp/Corrupt/Corrupt.h"
 #include "dsp/MacroBreak.h"
 #include "dsp/Playhead.h"
 #include "dsp/RecordBuffer.h"
@@ -47,6 +48,10 @@ struct EngineParams
     // Stage 3: Macro mode.
     StereoMode stereo = StereoMode::unique;
     int seed = 0;             // 0: the session seed, dice never repeat. Otherwise reproducible (keyed on tick index)
+    // Stage 4: Corrupt, at the end of the wet chain (before Width).
+    float corrupt = 0.0f;     // 0..1. 0 = off (DJ Filter: the centre is off)
+    CorruptType corruptType = CorruptType::decimate;
+    CorruptSet corruptSet = CorruptSet::all;
 };
 
 // A MIDI note for the engine, at a sample offset in the next process() block.
@@ -115,6 +120,7 @@ public:
         std::atomic<int> slice { 0 };
         std::atomic<uint32_t> sliceChanges { 0 };   // Traverse moved to another slice
         std::atomic<float> silenceDuty { 0.0f };
+        std::atomic<int> corrupt { -1 };            // the Corrupt effect playing (-1 = bypassed)
     };
     const Status& status() const noexcept { return status_; }
     const RecordBuffer& buffer() const noexcept { return buf_; }
@@ -190,6 +196,9 @@ private:
     uint64_t sessionSeed_ = 0x5eed;
     int lastSeed_ = 0;
 
+    // Stage 4.
+    Corrupt corrupt_;
+
     std::array<TickEvent, kTickRing> ticks_ {};
     std::atomic<uint64_t> tickCount_ { 0 };
 };
@@ -203,6 +212,7 @@ fault_engine* fault_create (double sampleRate, int maxBlock);
 void fault_destroy (fault_engine*);
 void fault_set_params (fault_engine*, float time, int repeats, float mix, int freeze, int clockSource, float windowing, float width);
 void fault_set_macro (fault_engine*, int mode, float bend, float brk, int bendOn, int breakOn, int stereoShared, int seed);
+void fault_set_corrupt (fault_engine*, float amount, int type, int originalThreeOnly);
 void fault_set_transport (fault_engine*, int playing, double bpm, double ppq);
 void fault_process (fault_engine*, const float* inL, const float* inR, float* outL, float* outR, int n);
 }

@@ -1,0 +1,23 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "time": 0.5,
+ "repeats": 4,
+ "mix": 1.0,
+ "mode": "macro",
+ "block": "random",
+ "seed": 1,
+ "tail": 0.5,
+ "length": 10.0,
+ "bendOnMacro": true,
+ "breakOnMacro": true,
+ "bendZone": 3,
+ "bendZonePos": 0.5,
+ "breakZone": 3,
+ "breakZonePos": 0.5,
+ "corruptType": "destroy",
+ "corrupt": 0.65
+}

@@ -1,0 +1,17 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "time": 0.5,
+ "repeats": 1,
+ "mix": 1.0,
+ "mode": "macro",
+ "block": "random",
+ "seed": 1,
+ "tail": 0.5,
+ "length": 8.0,
+ "corruptType": "destroy",
+ "corrupt": 1.0
+}

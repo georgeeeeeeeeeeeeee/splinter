@@ -61,7 +61,7 @@ private:
     juce::AudioProcessorValueTreeState apvts;
     struct Raw { std::atomic<float> *time, *repeats, *mix, *windowing, *width, *freeze, *reset, *clock, *freezeMode,
                        *mode, *bend, *brk, *bendOnMacro, *bendOnMicro, *breakOnMacro, *breakOnMicro, *noteToSpeed,
-                       *stereo, *seed; } raw {};
+                       *stereo, *seed, *corrupt, *corruptType, *corruptSet; } raw {};
     dsp::Engine engine_;
     bool resetHeld = false;
     static constexpr int kFifo = 512;

@@ -45,3 +45,12 @@ PCG32, one stream per decision kind and channel (Bend L/R, Break L/R). Seed 0: t
 
 ## D14 — New parameters (Stage 3)
 `stereoMode` (Unique / Shared, default Unique) and `seed` (0–99999, 0 shown as "Random"). State version 4.
+
+## D15 — Corrupt: one stage, crossfaded slots (Stage 4)
+`dsp/Corrupt/` holds each effect as a small header-only class (Decimate, Dropout, Destroy, DjFilter, Vinyl; a shared TPT `Svf.h`). `Corrupt` owns one of each (two Decimates) and plays a "slot": an effect, a Decimate preset, or bypass. Any slot change crossfades over 30 ms, with the outgoing slot still running underneath. A change that arrives mid-fade waits for the fade to end. The knob is smoothed over 20 ms for the continuous effects; Decimate's presets are meant to step. Bypassed and not fading, it returns at once. Each effect restarts clean when it comes in. Tested: no step during a 0 → 100% → 0 sweep, or while switching type every 125 ms, is larger than the held effect makes on its own. With the crossfades removed, both tests fail.
+
+## D16 — Vinyl's wow is a delay on the wet, not a playhead speed change
+Wow as a modulated delay (at most ~3 ms, linear interpolation) keeps Vinyl self-contained at the end of the chain, independent of the playheads, tape stops and the "exact octave" flag. It isn't reported as latency: the dry path is untouched, and the wet is already a delayed replay of the buffer.
+
+## D17 — New parameters (Stage 4)
+`corrupt` (0–1, default 0 = off), `corruptType` (Decimate, Dropout, Destroy, DJ Filter, Vinyl) and `corruptSet` (All / Original 3). State version 5. `corruptAtten` arrives with the mod matrix in Stage 5.

@@ -1,0 +1,54 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "time": 0.5,
+ "repeats": 1,
+ "mix": 1.0,
+ "mode": "macro",
+ "block": "random",
+ "seed": 1,
+ "tail": 0.5,
+ "length": 16.0,
+ "corrupt": 0.6,
+ "corruptType": "decimate",
+ "automation": [
+  {
+   "time": 2.0,
+   "param": "corruptType",
+   "value": "dropout"
+  },
+  {
+   "time": 4.0,
+   "param": "corruptType",
+   "value": "destroy"
+  },
+  {
+   "time": 6.0,
+   "param": "corruptType",
+   "value": "djfilter"
+  },
+  {
+   "time": 8.0,
+   "param": "corruptType",
+   "value": "vinyl"
+  },
+  {
+   "time": 10.0,
+   "param": "corruptType",
+   "value": "decimate"
+  },
+  {
+   "time": 12.0,
+   "param": "corruptType",
+   "value": "dropout"
+  },
+  {
+   "time": 14.0,
+   "param": "corruptType",
+   "value": "destroy"
+  }
+ ]
+}

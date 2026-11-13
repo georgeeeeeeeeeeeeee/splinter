@@ -69,6 +69,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
                                                       juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int v, int) {
                                                           return v == 0 ? juce::String ("Random") : juce::String (v);
                                                       })));
+
+    const params::FloatSpec corruptSpec { params::corruptId, "Corrupt", 0.0f, 1.0f, 0.0f, "" };
+    l.add (makeFloat (corruptSpec, { 0.0f, 1.0f }, [] (float v, int) { return v <= 0.0f ? juce::String ("Off") : juce::String (v * 100.0f, 0) + "%"; }));
+    l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { toJuce (params::corruptTypeId), 1 }, "Corrupt Type",
+                                                         names ({ params::kCorruptTypes[0], params::kCorruptTypes[1], params::kCorruptTypes[2],
+                                                                  params::kCorruptTypes[3], params::kCorruptTypes[4] }), 0));
+    l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { toJuce (params::corruptSetId), 1 }, "Corrupt Set",
+                                                         names ({ params::kCorruptSets[0], params::kCorruptSets[1] }), 0));
     return l;
 }
 } // namespace
@@ -83,7 +91,8 @@ FaultProcessor::FaultProcessor()
             get (params::freezeId), get (params::resetId), get (params::clockSourceId), get (params::freezeButtonModeId),
             get (params::modeId), get (params::bendId), get (params::breakId), get (params::bendOnMacroId), get (params::bendOnMicroId),
             get (params::breakOnMacroId), get (params::breakOnMicroId), get (params::noteToSpeedId),
-            get (params::stereoModeId), get (params::seedId) };
+            get (params::stereoModeId), get (params::seedId),
+            get (params::corruptId), get (params::corruptTypeId), get (params::corruptSetId) };
     // Seed 0: a fresh seed each session, so the dice never repeat between sessions.
     engine_.setSessionSeed ((uint64_t) juce::Random::getSystemRandom().nextInt64() ^ (uint64_t) juce::Time::getHighResolutionTicks());
     engine_.setParams (readParams());
@@ -142,6 +151,9 @@ dsp::EngineParams FaultProcessor::readParams() const noexcept
     p.noteToSpeed = raw.noteToSpeed->load() > 0.5f;
     p.stereo = raw.stereo->load() > 0.5f ? dsp::StereoMode::shared : dsp::StereoMode::unique;
     p.seed = (int) std::lround (raw.seed->load());
+    p.corrupt = raw.corrupt->load();
+    p.corruptType = (dsp::CorruptType) std::clamp ((int) std::lround (raw.corruptType->load()), 0, dsp::kNumCorruptTypes - 1);
+    p.corruptSet = raw.corruptSet->load() > 0.5f ? dsp::CorruptSet::original3 : dsp::CorruptSet::all;
     return p;
 }
 

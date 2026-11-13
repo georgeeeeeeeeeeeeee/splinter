@@ -1,0 +1,40 @@
+{
+ "clock": "host",
+ "tempo": {
+  "bpm": 120,
+  "playing": true
+ },
+ "time": 0.5,
+ "repeats": 1,
+ "mix": 1.0,
+ "mode": "macro",
+ "block": "random",
+ "seed": 1,
+ "tail": 0.5,
+ "length": 9.5,
+ "corruptType": "djfilter",
+ "corrupt": 0.5,
+ "automation": [
+  {
+   "time": 0.5,
+   "param": "corrupt",
+   "value": 0.5,
+   "to": 0.0,
+   "duration": 2.0
+  },
+  {
+   "time": 2.5,
+   "param": "corrupt",
+   "value": 0.0,
+   "to": 1.0,
+   "duration": 4.0
+  },
+  {
+   "time": 6.5,
+   "param": "corrupt",
+   "value": 1.0,
+   "to": 0.5,
+   "duration": 2.0
+  }
+ ]
+}

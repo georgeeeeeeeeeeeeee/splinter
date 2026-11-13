@@ -28,6 +28,7 @@ void Engine::prepare (double sampleRate, int)
     sr_ = sampleRate;
     buf_.prepare (sampleRate);
     clock_.prepare (sampleRate);
+    corrupt_.prepare (sampleRate);
     smoothLen_ = std::max (1, (int) (0.02 * sampleRate));
     octCoef_ = 1.0 - std::exp (-1.0 / (0.02 * sampleRate));   // Bend knob glide, 20 ms
     reset();
@@ -59,6 +60,8 @@ void Engine::reset() noexcept
     octSmoothed_ = p_.mode == Mode::micro ? -3.0 + 6.0 * (double) std::clamp (p_.bend, 0.0f, 1.0f) : 0.0;
     lastSeed_ = p_.seed;
     reseed();
+    corrupt_.setParams (p_.corrupt, p_.corruptType, p_.corruptSet);
+    corrupt_.reset();
     tickCount_.store (0, std::memory_order_release);
 }
 
@@ -66,6 +69,8 @@ void Engine::reseed() noexcept
 {
     for (int s = 0; s < kNumStreams; ++s)
         rngs_[(size_t) s].seed (mix64 (sessionSeed_ + (uint64_t) s * 0x632be59bd9b4e019ULL), (uint64_t) s + 1);
+    // Corrupt's randomness (Dropout, Vinyl, Decimate's jitter) follows the seed too.
+    corrupt_.reseed (p_.seed != 0 ? mix64 ((uint64_t) (uint32_t) p_.seed * 0x9e3779b97f4a7c15ULL) : mix64 (sessionSeed_ ^ 0xc0ffee));
 }
 
 Pcg32 Engine::tickRng (int stream, int64_t tickIndex) noexcept
@@ -97,6 +102,7 @@ void Engine::setParams (const EngineParams& p) noexcept
         lastSeed_ = p.seed;
         reseed();
     }
+    corrupt_.setParams (p.corrupt, p.corruptType, p.corruptSet);
     if (p.freezeMode == FreezeMode::momentary && buf_.frozen() != p.freeze)
     {
         buf_.setFrozen (p.freeze);
@@ -450,6 +456,7 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
             wet[(size_t) ch] = w;
         }
         float wl = wet[0], wr = wet[1];
+        corrupt_.process (wl, wr);
 
         if (smoothLeft_ > 0)
         {
@@ -483,6 +490,7 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
     status_.sliceChanges.store (sliceChanges_, std::memory_order_relaxed);
     status_.silenceDuty.store (p_.mode == Mode::micro ? (p_.breakOnMicro ? 0.9f * std::clamp (p_.brk, 0.0f, 1.0f) : 0.0f) : (float) voices_[0].duty,
                                std::memory_order_relaxed);
+    status_.corrupt.store (corrupt_.playing(), std::memory_order_relaxed);
 }
 } // namespace fault::dsp
 
@@ -524,6 +532,14 @@ void fault_set_macro (fault_engine* e, int mode, float bend, float brk, int bend
     (mode != 0 ? p.breakOnMicro : p.breakOnMacro) = breakOn != 0;
     p.stereo = stereoShared != 0 ? fault::dsp::StereoMode::shared : fault::dsp::StereoMode::unique;
     p.seed = seed;
+    e->engine.setParams (p);
+}
+void fault_set_corrupt (fault_engine* e, float amount, int type, int originalThreeOnly)
+{
+    auto& p = e->params;
+    p.corrupt = amount;
+    p.corruptType = (fault::dsp::CorruptType) std::clamp (type, 0, fault::dsp::kNumCorruptTypes - 1);
+    p.corruptSet = originalThreeOnly != 0 ? fault::dsp::CorruptSet::original3 : fault::dsp::CorruptSet::all;
     e->engine.setParams (p);
 }
 void fault_set_transport (fault_engine* e, int playing, double bpm, double ppq)

@@ -35,7 +35,13 @@ inline constexpr std::string_view stereoModeId = "stereoMode", seedId = "seed";
 inline constexpr std::string_view kStereoModes[] = { "Unique", "Shared" };
 inline constexpr int kMaxSeed = 99999;
 
-inline constexpr int kStateVersion = 4;
+// Stage 4. corrupt 0..1: 0 is off (for DJ Filter the centre is off). corruptSet "Original 3" plays only
+// Decimate, Dropout and Destroy (DJ Filter and Vinyl fall back to Decimate).
+inline constexpr std::string_view corruptId = "corrupt", corruptTypeId = "corruptType", corruptSetId = "corruptSet";
+inline constexpr std::string_view kCorruptTypes[] = { "Decimate", "Dropout", "Destroy", "DJ Filter", "Vinyl" };
+inline constexpr std::string_view kCorruptSets[] = { "All", "Original 3" };
+
+inline constexpr int kStateVersion = 5;
 
 float dbToGain (float db) noexcept;
 } // namespace fault::params
