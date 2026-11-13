@@ -1,0 +1,24 @@
+{
+ "name": "CD Skip",
+ "category": "Skip",
+ "about": "A disc that can't find its place: the slice jumps on every eighth.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 8,
+  "mix": 100,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "mod1Shape": "S&H",
+  "mod1Sync": "1/8",
+  "mod1Rate": 1.0,
+  "mod1Polarity": "Unipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Break",
+  "route1Depth": 100
+ }
+}

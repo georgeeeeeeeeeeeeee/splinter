@@ -1,0 +1,22 @@
+{
+ "name": "Triplet Trip",
+ "category": "Stutter",
+ "about": "Triplet ticks with a slice count that changes every triplet eighth.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.75,
+  "repeats": 3,
+  "mix": 100,
+  "mod1Shape": "S&H",
+  "mod1Sync": "1/8T",
+  "mod1Rate": 1.0,
+  "mod1Polarity": "Unipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Repeats",
+  "route1Depth": 40,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.245
+ }
+}

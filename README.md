@@ -2,12 +2,13 @@
 
 A circuit-bent digital buffer effect (AU + VST3). It records audio into a long stereo buffer and, on every clock tick, plays a window of it back broken: stutters, reverse, varispeed, tape stops, skips, dropouts, then bitcrush, saturation, filter and vinyl. An original product.
 
-Status: **Stage 5**, modulation. On top of the buffer core (Stage 1), Micro mode (Stage 2), Macro mode (Stage 3) and Corrupt (Stage 4): four modulators, an envelope follower, four MIDI CC lanes, 8 route slots, attenuators, gate notes, the Note clock and Reset. The UI is a debug panel.
+Status: **Stage 6**, the editor and presets. On top of the buffer core, Micro and Macro modes, Corrupt and modulation (Stages 1–5): the real editor (buffer view, mod drawer, settings drawer) and 30 factory presets.
 
 ```
 build/tests/fault_tests                       # unit tests
 python3 tools/make_fixtures.py [voice.wav]    # test material (needs numpy, scipy)
 scripts/checkpoint1.sh … checkpoint5.sh   (or .ps1)   # renders: build/renders/stage1..5
+scripts/checkpoint6.sh                    (or .ps1)   # every preset through the real plug-in + editor snapshots
 python3 tools/check_pitch.py build/renders/stage2/tone-chromatic.wav tools/render/stage2/tone-chromatic.json
 ```
 
@@ -42,17 +43,39 @@ Corrupt Set "Original 3" limits it to Decimate, Dropout and Destroy; DJ Filter a
 - **Sources:** Mod 1–4 (sine, triangle, saw, square, S&H, smooth random; free 0.01–40 Hz, or synced from 1/32 to 8 bars with dotted and triplet lengths; phase; unipolar or bipolar), Env (an envelope follower on the input), and CC 1–4.
 - **Routes:** 8 slots, each a source, a destination (Time, Repeats, Mix, Bend, Break, Corrupt) and a depth from −100% to +100%. Modulation is added to the knob and clamped; it never moves the knob itself, so host automation and modulation stack.
 - **Attenuators:** Bend Atten, Break Atten and Corrupt Atten scale all modulation into those three. Bend Atten doesn't apply in Micro mode.
-- **CC lanes:** default CC 1 (mod wheel), 16, 17, 18. To learn one, click its "CC n = …" button in the debug panel and move a controller.
+- **CC lanes:** default CC 1 (mod wheel), 16, 17, 18. To learn one, click its "CC# …" button in the mod drawer and move a controller.
 - **Gate notes:** Freeze C1, Bend C#1, Break D1, Corrupt D#1, Reset E1, Note clock F1 (Live's numbering, C3 = 60). Each is learnable with its button.
   - Gate Mode Latching: each note-on flips the toggle.
   - Gate Mode Momentary: the toggle is flipped while the note is held.
   - The Bend and Break gates act on the current mode's toggle. The Corrupt gate steps to the next type (Corrupt As Reset makes it a Reset instead).
+  - To learn a gate note, click it in the settings drawer and play a note.
 - **Clock = Note:** each F1 note-on is a pulse, and Time picks the div/mult. If the pulses stop, the clock carries on at the last rate after four intervals.
-- **Restore defaults** (debug panel) resets the settings the brief lists and clears the routes.
+- **Restore defaults** (settings drawer) resets the settings the brief lists and clears the routes.
 
-In Live: put Fault on an audio track, make a MIDI track, and set its MIDI To to the Fault track. Drop `tools/live/fault-stage5-gates.mid` onto that MIDI track; it's the same 4 bars as the `drums-gates-clip` render. The MIDI monitor in the debug panel shows each event's sample offset in its block.
+In Live: put Fault on an audio track, make a MIDI track, and set its MIDI To to the Fault track. Drop `tools/live/fault-stage5-gates.mid` onto that MIDI track; it's the same 4 bars as the `drums-gates-clip` render. The settings drawer's "MIDI in" lines show each event's sample offset in its block.
 
 `scripts/checkpoint5.sh` (or `.ps1`) renders the Stage 5 set into `build/renders/stage5`. `tools/make_stage5_settings.py` regenerates the settings and the MIDI clip.
+
+## The editor
+
+- **Left, Buffer:** Time, Repeats, Mix. **Right, Damage:** Bend, Break, Corrupt, each with its on button or type below.
+- **Centre, the buffer view:** the active window (left channel above, right below).
+  - Slice lines, with the playing slice lighter; it flashes violet when the slice jumps.
+  - Each playhead is white going forward and amber in reverse.
+  - Silence is hatched red.
+  - When Time shrinks, the older audio stays in view as a ghost to the left of the window and fades out.
+  - Every tick flashes the window and the lamp in the corner. A blue border means frozen.
+- **Knob readouts** speak the knob's language: Time as a note length (Host) or seconds/Hz (Internal), Bend as a zone and position (Macro) or octaves (Micro), Corrupt as the Decimate preset name, the filter frequency, and so on.
+  - The lime ring on a knob shows where modulation has taken it.
+- **Mod drawer:** modulators with scopes, the envelope follower, CC lanes (learn), and the 8 routes. Drag a source chip onto any of the six knobs to route it (50% depth, or the existing route if there is one).
+- **Settings drawer:** windowing, width, stereo, seed, note-to-speed, attenuators, gate and freeze behaviour, Corrupt set and Corrupt-as-reset, gate notes (learn), Restore defaults, and a MIDI-in readout.
+- **Resizable:** fixed ratio, from 80% to 200% of 900 × 560.
+
+## Presets
+
+30 factory presets in Tape, Skip, Stutter, Ghost, Ruin and Ambient, from the header's browser (< > to step). Save writes your own to the user folder (`~/Library/Application Support/Fault/Presets` on Mac, `%APPDATA%\Fault\Presets` on Windows); they appear under User. A preset lists parameters by ID in their own units, and anything it leaves out goes back to its default. Presets don't touch the CC numbers or gate notes (those belong to the session).
+
+The factory set is generated by `tools/make_presets.py` (Macro knob positions are given as zone and position and read from `tuning/macro_tables.json`, so re-run it after moving zone boundaries). `fault-presets --check` loads each one strictly through the real processor and renders it.
 
 ## Install (unsigned build)
 

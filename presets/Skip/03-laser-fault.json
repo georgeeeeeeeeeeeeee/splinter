@@ -1,0 +1,17 @@
+{
+ "name": "Laser Fault",
+ "category": "Skip",
+ "about": "The laser stutters into small pieces and loses resolution.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 4,
+  "mix": 80,
+  "width": 70,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.425,
+  "corruptType": "Decimate",
+  "corrupt": 0.4
+ }
+}

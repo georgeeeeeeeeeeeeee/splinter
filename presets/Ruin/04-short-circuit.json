@@ -1,0 +1,16 @@
+{
+ "name": "Short Circuit",
+ "category": "Ruin",
+ "about": "Fast free-running windows that turn into tones and crunch.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 0.82,
+  "repeats": 3,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.59,
+  "corruptType": "Decimate",
+  "corrupt": 0.7
+ }
+}

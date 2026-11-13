@@ -1,0 +1,16 @@
+{
+ "name": "Dropout Deck",
+ "category": "Tape",
+ "about": "Bad contact: the tape drops out, and sometimes runs backwards.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.11,
+  "corruptType": "Dropout",
+  "corrupt": 0.3
+ }
+}

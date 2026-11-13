@@ -1,0 +1,22 @@
+{
+ "name": "Slow Smear",
+ "category": "Ambient",
+ "about": "Long windows that stretch and glide, the length drifting slowly.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 0.08,
+  "mix": 55,
+  "windowing": 90,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.59,
+  "mod1Shape": "Smooth Random",
+  "mod1Sync": "Free",
+  "mod1Rate": 0.1,
+  "mod1Polarity": "Bipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Time",
+  "route1Depth": 6
+ }
+}

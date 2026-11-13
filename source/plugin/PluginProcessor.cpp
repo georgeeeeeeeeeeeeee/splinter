@@ -26,7 +26,8 @@ juce::StringArray names (std::initializer_list<std::string_view> list)
 juce::AudioProcessorValueTreeState::ParameterLayout layout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout l;
-    const auto pct = [] (float v, int) { return juce::String (v, v < 10.0f ? 1 : 0) + "%"; };
+    const auto pct = [] (float v, int) { return (std::abs (v) < 10.0f ? juce::String (v, 1) : juce::String (juce::roundToInt (v))) + "%"; };
+    const auto ms = [] (float v, int) { return (v < 10.0f ? juce::String (v, 1) : juce::String (juce::roundToInt (v))) + " ms"; };
     l.add (makeFloat (params::time, { 0.0f, 1.0f }, [] (float v, int) {
         const double s = dsp::Clock::internalPeriodSeconds (v);   // the internal period; synced: see the step names
         return (s >= 1.0 ? juce::String (s, 2) + " s" : juce::String (s * 1000.0, 1) + " ms") + "  /  " + dsp::Clock::kRateNames[(size_t) dsp::Clock::hostStep (v)];
@@ -53,7 +54,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
         const float oct = -3.0f + 6.0f * v;
         return (oct >= 0.0f ? "+" : "") + juce::String (oct, 2) + " oct";
     }));
-    l.add (makeFloat (breakSpec, { 0.0f, 1.0f }, [] (float v, int) { return juce::String (v * 100.0f, 0) + "%"; }));
+    l.add (makeFloat (breakSpec, { 0.0f, 1.0f }, [] (float v, int) { return juce::String (juce::roundToInt (v * 100.0f)) + "%"; }));
     const auto toggle = [&l] (std::string_view id, const char* name) {
         l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (id), 1 }, name, false));
     };
@@ -71,7 +72,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
                                                       })));
 
     const params::FloatSpec corruptSpec { params::corruptId, "Corrupt", 0.0f, 1.0f, 0.0f, "" };
-    l.add (makeFloat (corruptSpec, { 0.0f, 1.0f }, [] (float v, int) { return v <= 0.0f ? juce::String ("Off") : juce::String (v * 100.0f, 0) + "%"; }));
+    l.add (makeFloat (corruptSpec, { 0.0f, 1.0f }, [] (float v, int) { return v <= 0.0f ? juce::String ("Off") : juce::String (juce::roundToInt (v * 100.0f)) + "%"; }));
     l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { toJuce (params::corruptTypeId), 1 }, "Corrupt Type",
                                                          names ({ params::kCorruptTypes[0], params::kCorruptTypes[1], params::kCorruptTypes[2],
                                                                   params::kCorruptTypes[3], params::kCorruptTypes[4] }), 0));
@@ -108,15 +109,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
                                                                 return juce::String (v, v < 1.0f ? 3 : 2) + " Hz"; })));
         choice (id + "Sync", nm + "Sync", syncs, 0);
         l.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id + "Phase", 1 }, nm + "Phase", juce::NormalisableRange<float> (0.0f, 360.0f), 0.0f,
-                                                            juce::AudioParameterFloatAttributes().withLabel ("deg")));
+                                                            juce::AudioParameterFloatAttributes().withLabel ("deg").withStringFromValueFunction ([] (float v, int) {
+                                                                return juce::String (juce::roundToInt (v)) + juce::String (juce::CharPointer_UTF8 ("\xc2\xb0")); })));
         choice (id + "Polarity", nm + "Polarity", polar, 1);
     }
     l.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { toJuce (params::envAttackId), 1 }, "Env Attack", juce::NormalisableRange<float> (0.1f, 500.0f, 0.0f, 0.3f), 10.0f,
-                                                        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+                                                        juce::AudioParameterFloatAttributes().withLabel ("ms").withStringFromValueFunction (ms)));
     l.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { toJuce (params::envReleaseId), 1 }, "Env Release", juce::NormalisableRange<float> (1.0f, 5000.0f, 0.0f, 0.3f), 200.0f,
-                                                        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+                                                        juce::AudioParameterFloatAttributes().withLabel ("ms").withStringFromValueFunction (ms)));
     l.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { toJuce (params::envGainId), 1 }, "Env Gain", juce::NormalisableRange<float> (-24.0f, 24.0f), 0.0f,
-                                                        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+                                                        juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction ([] (float v, int) {
+                                                            return (v > 0.05f ? "+" : "") + juce::String (v, 1) + " dB"; })));
     for (int c = 1; c <= dsp::kNumCcLanes; ++c)
         choice ("cc" + juce::String (c) + "Polarity", "CC " + juce::String (c) + " Polarity", polar, 0);
     for (int r = 1; r <= dsp::kNumRoutes; ++r)
@@ -126,7 +129,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
         choice (id + "Dest", nm + "Dest", dests, 0);
         l.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id + "Depth", 1 }, nm + "Depth", juce::NormalisableRange<float> (-100.0f, 100.0f), 0.0f,
                                                             juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction ([] (float v, int) {
-                                                                return (v > 0.0f ? "+" : "") + juce::String (v, 0) + "%"; })));
+                                                                return (v > 0.0f ? "+" : "") + juce::String (juce::roundToInt (v)) + "%"; })));
     }
     return l;
 }
@@ -168,6 +171,7 @@ FaultProcessor::FaultProcessor()
     engine_.setSessionSeed ((uint64_t) juce::Random::getSystemRandom().nextInt64() ^ (uint64_t) juce::Time::getHighResolutionTicks());
     engine_.setParams (readParams());
     engine_.prepare (48000.0, 512);   // playable even before prepareToPlay; re-prepared there
+    presets_.onLoad = [this] { engine_.clearGates(); };
 #ifdef FAULT_TABLES_PATH
     tablesFile_ = juce::File (FAULT_TABLES_PATH);
     tablesStatus_ = "Macro tables: watching " + tablesFile_.getFullPathName();
@@ -197,6 +201,7 @@ void FaultProcessor::timerCallback()
     }
     if (! engine_.setTables (tables))
         tablesWaiting_ = tables;
+    tablesUi_ = tables;
     tablesStatus_ = "Macro tables: loaded " + juce::Time::getCurrentTime().toString (false, true, true, true) + " from " + tablesFile_.getFileName();
 }
 
@@ -356,6 +361,7 @@ void FaultProcessor::getStateInformation (juce::MemoryBlock& dest)
     for (auto& g : gateNotes) gates.add (juce::String (g.load()));
     state.setProperty ("ccNumbers", cc.joinIntoString (","), nullptr);
     state.setProperty ("gateNotes", gates.joinIntoString (","), nullptr);
+    state.setProperty ("preset", presets_.currentName(), nullptr);
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, dest);
 }
@@ -374,7 +380,27 @@ void FaultProcessor::setStateInformation (const void* data, int size)
         readList ("ccNumbers", ccNumbers, 0, 127);
         readList ("gateNotes", gateNotes, 0, 127);
         apvts.replaceState (tree);
+        presets_.setCurrentName (tree.getProperty ("preset", "Init").toString());
     }
+}
+
+int FaultProcessor::assignRoute (int source, int dest)
+{
+    const auto param = [this] (int slot, const char* what) { return apvts.getParameter ("route" + juce::String (slot + 1) + what); };
+    const auto index = [] (juce::RangedAudioParameter* p) { return (int) std::lround (p->convertFrom0to1 (p->getValue())); };
+    int slot = -1;
+    for (int r = 0; r < dsp::kNumRoutes && slot < 0; ++r)
+        if (index (param (r, "Source")) == source && index (param (r, "Dest")) == dest) slot = r;
+    const bool fresh = slot < 0;
+    for (int r = 0; r < dsp::kNumRoutes && slot < 0; ++r)
+        if (index (param (r, "Source")) == 0 || index (param (r, "Dest")) == 0) slot = r;
+    if (slot < 0)
+        return -1;
+    const auto set = [] (juce::RangedAudioParameter* p, float plain) { p->setValueNotifyingHost (p->convertTo0to1 (plain)); };
+    set (param (slot, "Source"), (float) source);
+    set (param (slot, "Dest"), (float) dest);
+    if (fresh) set (param (slot, "Depth"), 50.0f);
+    return slot;
 }
 
 void FaultProcessor::restoreDefaults()
@@ -400,6 +426,7 @@ void FaultProcessor::restoreDefaults()
         set ("route" + juce::String (r) + "Depth", 0.0f);
     }
     engine_.clearGates();
+    presets_.setCurrentName ("Init");
 }
 
 juce::AudioProcessorEditor* FaultProcessor::createEditor() { return new FaultEditor (*this); }

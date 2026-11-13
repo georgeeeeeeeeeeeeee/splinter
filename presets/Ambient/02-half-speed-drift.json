@@ -1,0 +1,19 @@
+{
+ "name": "Half-Speed Drift",
+ "category": "Ambient",
+ "about": "An octave down, soft-edged and a little dusty.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.375,
+  "repeats": 1,
+  "mix": 50,
+  "windowing": 80,
+  "mode": "Micro",
+  "bend": 0.3333,
+  "bendOnMicro": false,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "corruptType": "Vinyl",
+  "corrupt": 0.2
+ }
+}

@@ -1,0 +1,16 @@
+{
+ "name": "Varispeed Slew",
+ "category": "Tape",
+ "about": "Pitch glides between speeds every beat, with a touch of surface noise.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 80,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.59,
+  "corruptType": "Vinyl",
+  "corrupt": 0.15
+ }
+}

@@ -1,172 +1,366 @@
 #include "plugin/PluginEditor.h"
+
+#include "dsp/Corrupt/Corrupt.h"
 #include "dsp/Params.h"
 
 namespace fault
 {
 namespace
 {
-juce::String corruptName (int t)
+using namespace ui;
+const char* kBendZones[] = { "Off", "Reverse", "Octave", "Two octaves", "Slew", "Tape stop", "Everything" };
+const char* kBreakZones[] = { "Off", "Halve", "Jump", "Subdivide", "Audio rate", "Silence", "Everything" };
+// Host / note steps as note lengths (ticks per beat 1/16 .. 8).
+const char* kStepNotes[] = { "4 bars", "2 bars", "1 bar", "1/2", "1/4", "1/8", "1/8T", "1/16", "1/32" };
+
+juce::String hzOrSeconds (double s)
 {
-    const char* n[] = { "Decimate", "Dropout", "Destroy", "DJ Filter", "Vinyl" };
-    return t >= 0 && t < 5 ? juce::String (n[t]) : juce::String ("off");
+    if (s >= 1.0) return juce::String (s, 2) + " s";
+    if (s >= 0.1) return juce::String (juce::roundToInt (s * 1000.0)) + " ms";
+    return juce::String (1.0 / s, 1) + " Hz";
 }
 } // namespace
 
-FaultEditor::FaultEditor (FaultProcessor& p) : AudioProcessorEditor (p), proc (p)
+FaultEditor::FaultEditor (FaultProcessor& p)
+    : AudioProcessorEditor (p), proc (p), view (p.engine()),
+      bendOn (p.getApvts(), "bendOnMacro", "Bend", colours::bend), breakOn (p.getApvts(), "breakOnMacro", "Break", colours::brk),
+      freeze (p.getApvts(), "freeze", "Freeze", colours::freeze), modDrawer (p), settingsDrawer (p)
 {
-    for (auto* prm : p.getParameters())
-    {
-        auto* r = dynamic_cast<juce::RangedAudioParameter*> (prm);
-        if (r == nullptr) continue;
-        Row row;
-        row.label = std::make_unique<juce::Label> (juce::String(), r->getName (24));
-        row.label->setColour (juce::Label::textColourId, juce::Colours::lightgrey);
-        if (auto* ch = dynamic_cast<juce::AudioParameterChoice*> (r))
+    setLookAndFeel (&look);
+    auto& s = p.getApvts();
+    const auto& st = p.engine().status();
+    const auto knob = [&] (const char* id, const char* name, juce::Colour c, dsp::ModDest d, bool bipolar = false) {
+        auto k = std::make_unique<Knob> (param (s, id), name, c, (int) d, bipolar);
+        k->modulated = [&st, d] { return st.modulated[(size_t) d].load (std::memory_order_relaxed); };
+        k->onAssign = [this] (int src, int dest) {
+            if (proc.assignRoute (src, dest) < 0)
+                juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::InfoIcon, "Routes full", "All 8 routes are in use: clear one in the mod drawer.");
+        };
+        content.addAndMakeVisible (*k);
+        return k;
+    };
+    time = knob ("time", "Time", colours::buffer, dsp::ModDest::time);
+    repeats = knob ("repeats", "Repeats", colours::buffer, dsp::ModDest::repeats);
+    mix = knob ("mix", "Mix", colours::buffer, dsp::ModDest::mix);
+    bend = knob ("bend", "Bend", colours::bend, dsp::ModDest::bend);
+    brk = knob ("break", "Break", colours::brk, dsp::ModDest::brk);
+    corrupt = knob ("corrupt", "Corrupt", colours::corrupt, dsp::ModDest::corrupt);
+    time->valueText = [this] { return timeText(); };
+    bend->valueText = [this] { return bendText(); };
+    brk->valueText = [this] { return breakText(); };
+    corrupt->valueText = [this] { return corruptText(); };
+    view.clockText = [this] { return clockText(); };
+
+    corruptType = std::make_unique<ParamCombo> (s, "corruptType");
+    for (juce::Component* c : { (juce::Component*) &view, (juce::Component*) &bendOn, (juce::Component*) &breakOn, (juce::Component*) &freeze,
+                                (juce::Component*) corruptType.get(), (juce::Component*) &presetBox })
+        content.addAndMakeVisible (c);
+    bendOn.setTooltip ("Macro: let the Bend dice play. Micro: reverse");
+    breakOn.setTooltip ("Macro: let the Break dice play. Micro: Traverse (off) or Silence (on)");
+    freeze.setTooltip ("Stop recording: the window keeps playing what's in the buffer");
+
+    const auto setChoice = [&s] (const char* id, int index) {
+        if (auto* q = s.getParameter (id)) q->setValueNotifyingHost (q->convertTo0to1 ((float) index));
+    };
+    const auto segment = [&] (juce::TextButton& b, juce::Colour c, std::function<void()> f, const char* tip) {
+        b.setColour (juce::TextButton::buttonOnColourId, c);
+        b.onClick = std::move (f);
+        b.setTooltip (tip);
+        content.addAndMakeVisible (b);
+    };
+    segment (macroBtn, colours::text, [=] { setChoice ("mode", 0); }, "Macro: Bend and Break roll dice on every tick");
+    segment (microBtn, colours::text, [=] { setChoice ("mode", 1); }, "Micro: Bend is speed, Break picks the slice or the silence");
+    segment (intBtn, colours::buffer, [=] { setChoice ("clockSource", 0); }, "Internal clock: Time is the period, 16 s to 80 Hz");
+    segment (hostBtn, colours::buffer, [=] { setChoice ("clockSource", 1); }, "Host tempo: Time picks a note length, locked to the bar");
+    segment (noteBtn, colours::buffer, [=] { setChoice ("clockSource", 2); }, "Note clock: each Note-clock gate note is a pulse");
+    resetBtn.setTooltip ("Re-sync the clock (and capture a new window)");
+    resetBtn.onStateChange = [this, &s] {
+        if (auto* q = s.getParameter ("reset")) q->setValueNotifyingHost (resetBtn.isDown() ? 1.0f : 0.0f);
+    };
+    content.addAndMakeVisible (resetBtn);
+
+    for (auto* b : { &prevBtn, &nextBtn, &saveBtn, &modBtn, &setBtn })
+        content.addAndMakeVisible (b);
+    modBtn.setColour (juce::TextButton::buttonOnColourId, colours::mod);
+    setBtn.setColour (juce::TextButton::buttonOnColourId, colours::text);
+    modBtn.onClick = [this] { showDrawer (modDrawer.isVisible() ? 0 : 1); };
+    setBtn.onClick = [this] { showDrawer (settingsDrawer.isVisible() ? 0 : 2); };
+    const auto step = [this] (int d) {
+        const int n = (int) proc.presetManager().presets().size();
+        if (n == 0) return;
+        const int cur = proc.presetManager().current();
+        juce::String err;
+        proc.presetManager().load (((cur < 0 ? (d > 0 ? -1 : 0) : cur) + d + n) % n, err);
+    };
+    prevBtn.onClick = [step] { step (-1); };
+    nextBtn.onClick = [step] { step (1); };
+    saveBtn.onClick = [this] { savePreset(); };
+    presetBox.onChange = [this] {
+        const int id = presetBox.getSelectedId();
+        if (id > 0 && id - 1 != proc.presetManager().current())
         {
-            auto box = std::make_unique<juce::ComboBox>();
-            box->addItemList (ch->choices, 1);
-            row.c = std::make_unique<juce::ComboBoxParameterAttachment> (*ch, *box);
-            row.control = std::move (box);
+            juce::String err;
+            proc.presetManager().load (id - 1, err);
         }
-        else if (auto* b = dynamic_cast<juce::AudioParameterBool*> (r))
-        {
-            auto t = std::make_unique<juce::ToggleButton>();
-            row.b = std::make_unique<juce::ButtonParameterAttachment> (*b, *t);
-            row.control = std::move (t);
-        }
-        else
-        {
-            auto s = std::make_unique<juce::Slider> (juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
-            s->setTextBoxStyle (juce::Slider::TextBoxRight, false, 140, 20);
-            row.s = std::make_unique<juce::SliderParameterAttachment> (*r, *s);
-            row.control = std::move (s);
-        }
-        rowHolder.addAndMakeVisible (*row.label);
-        rowHolder.addAndMakeVisible (*row.control);
-        rows.push_back (std::move (row));
-    }
-    viewport.setViewedComponent (&rowHolder, false);
-    viewport.setScrollBarsShown (true, false);
-    addAndMakeVisible (viewport);
-    for (int c = 0; c < dsp::kNumCcLanes; ++c)
-    {
-        ccLearn[(size_t) c].onClick = [this, c] { proc.learnCc.store (proc.learnCc.load() == c ? -1 : c); };
-        addAndMakeVisible (ccLearn[(size_t) c]);
-    }
-    for (int g = 0; g < dsp::kNumGates; ++g)
-    {
-        gateLearn[(size_t) g].onClick = [this, g] { proc.learnGate.store (proc.learnGate.load() == g ? -1 : g); };
-        addAndMakeVisible (gateLearn[(size_t) g]);
-    }
-    restore.onClick = [this] { proc.restoreDefaults(); };
-    addAndMakeVisible (restore);
-    modInfo.setColour (juce::Label::textColourId, juce::Colour (0xffe0b050));
-    modInfo.setFont (juce::FontOptions (12.0f));
-    addAndMakeVisible (modInfo);
-    tickInfo.setColour (juce::Label::textColourId, juce::Colour (0xff4fd1b5));
-    addAndMakeVisible (tickInfo);
-    tablesInfo.setColour (juce::Label::textColourId, juce::Colour (0xffb0b6bf));
-    tablesInfo.setFont (juce::FontOptions (12.0f));
-    addAndMakeVisible (tablesInfo);
-    log.setMultiLine (true);
-    log.setReadOnly (true);
-    log.setCaretVisible (false);
-    log.setFont (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(), 12.0f, juce::Font::plain));
-    log.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff15171b));
-    log.setText ("MIDI in (channel, data, sample offset / block size)\n");
-    addAndMakeVisible (log);
-    counts.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible (counts);
-    setSize (680, 900);
-    startTimerHz (30);
+    };
+    presetBox.setTextWhenNothingSelected ("Init");
+
+    content.addChildComponent (modDrawer);
+    content.addChildComponent (settingsDrawer);
+    addAndMakeVisible (content);
+    content.setBounds (0, 0, kBaseW, kBaseH);
+    layout();
+
+    setResizable (true, true);
+    getConstrainer()->setFixedAspectRatio ((double) kBaseW / kBaseH);
+    setResizeLimits (kBaseW * 8 / 10, kBaseH * 8 / 10, kBaseW * 2, kBaseH * 2);
+    setSize (kBaseW, kBaseH);
+    startTimerHz (60);
 }
 
-void FaultEditor::paint (juce::Graphics& g)
+FaultEditor::~FaultEditor()
 {
-    g.fillAll (juce::Colour (0xff0d0e11));
-    g.setColour (juce::Colours::white);
-    g.setFont (juce::FontOptions (20.0f, juce::Font::bold));
-    g.drawText ("FAULT", 16, 10, 200, 28, juce::Justification::centredLeft);
-    g.setColour (juce::Colours::grey);
-    g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("Stage 5 debug UI  v" JucePlugin_VersionString, 200, 10, 344, 28, juce::Justification::centredRight);
+    stopTimer();
+    setLookAndFeel (nullptr);
 }
 
 void FaultEditor::resized()
 {
-    auto r = getLocalBounds().reduced (16);
-    r.removeFromTop (34);
-    viewport.setBounds (r.removeFromTop (440));
-    const int w = viewport.getWidth() - viewport.getScrollBarThickness();
-    rowHolder.setSize (w, (int) rows.size() * 26);
-    int y = 0;
-    for (auto& row : rows)
+    content.setTransform (juce::AffineTransform::scale ((float) getWidth() / (float) kBaseW));
+}
+
+void FaultEditor::layout()
+{
+    // Header.
+    presetBox.setBounds (330, 12, 240, 24);
+    prevBtn.setBounds (300, 12, 26, 24);
+    nextBtn.setBounds (574, 12, 26, 24);
+    saveBtn.setBounds (606, 12, 50, 24);
+    modBtn.setBounds (744, 12, 60, 24);
+    setBtn.setBounds (810, 12, 74, 24);
+
+    // Knob columns.
+    const int kw = 150, kh = 128, top = 56;
+    time->setBounds (18, top, kw, kh);
+    repeats->setBounds (18, top + kh + 10, kw, kh);
+    mix->setBounds (18, top + 2 * (kh + 10), kw, kh);
+    bend->setBounds (732, top, kw, kh - 6);
+    bendOn.setBounds (777, top + kh - 4, 60, 20);
+    brk->setBounds (732, top + kh + 18, kw, kh - 6);
+    breakOn.setBounds (777, top + 2 * kh + 14, 60, 20);
+    corrupt->setBounds (732, top + 2 * (kh + 18), kw, kh - 6);
+    corruptType->setBounds (757, top + 3 * kh + 32, 110, 22);
+
+    // Centre.
+    const juce::Rectangle<int> centre (184, 52, 532, 410);
+    view.setBounds (centre);
+    // Transport row under the view.
+    int x = 184;
+    const int y = 476, h = 28;
+    for (auto* b : { &macroBtn, &microBtn }) { b->setBounds (x, y, 62, h); x += 64; }
+    x += 14;
+    freeze.setBounds (x, y, 78, h);
+    x += 92;
+    for (auto* b : { &intBtn, &hostBtn, &noteBtn }) { b->setBounds (x, y, 52, h); x += 54; }
+    x += 14;
+    resetBtn.setBounds (x, y, 66, h);
+
+    const auto drawerArea = juce::Rectangle<int> (184, 52, 532, 496);
+    modDrawer.setBounds (drawerArea);
+    settingsDrawer.setBounds (drawerArea);
+}
+
+void FaultEditor::Content::paint (juce::Graphics& g)
+{
+    g.fillAll (colours::bg);
+    // The wordmark: drawn, then a band of it re-drawn sideways, like a buffer skipping.
+    const juce::Rectangle<int> mark (20, 8, 150, 32);
+    const auto word = [&] (juce::Colour c, int dx) {
+        g.setColour (c);
+        g.setFont (juce::FontOptions (27.0f, juce::Font::bold).withKerningFactor (0.18f));
+        g.drawText ("FAULT", mark.translated (dx, 0), juce::Justification::centredLeft, false);
+    };
+    word (colours::corrupt.withAlpha (0.55f), -2);
+    word (colours::buffer.withAlpha (0.55f), 2);
+    word (colours::text, 0);
     {
-        juce::Rectangle<int> line (0, y, w, 26);
-        y += 26;
-        row.label->setBounds (line.removeFromLeft (140));
-        row.control->setBounds (line.reduced (0, 2));
+        juce::Graphics::ScopedSaveState save (g);
+        g.reduceClipRegion (mark.getX(), mark.getY() + 15, mark.getWidth(), 4);
+        g.setColour (colours::bg);
+        g.fillRect (mark);
+        word (colours::text, 6);
     }
-    r.removeFromTop (6);
-    auto learnRow = r.removeFromTop (26);
-    for (auto& b : ccLearn) b.setBounds (learnRow.removeFromLeft (learnRow.getWidth() / 5).reduced (2, 1));
-    restore.setBounds (learnRow.reduced (2, 1));
-    auto gateRow = r.removeFromTop (26);
-    const int gw = gateRow.getWidth() / dsp::kNumGates;
-    for (auto& b : gateLearn) b.setBounds (gateRow.removeFromLeft (gw).reduced (2, 1));
-    modInfo.setBounds (r.removeFromTop (36));
-    tickInfo.setBounds (r.removeFromTop (24));
-    tablesInfo.setBounds (r.removeFromTop (20));
-    r.removeFromTop (6);
-    counts.setBounds (r.removeFromBottom (22));
-    log.setBounds (r);
+    drawCaption (g, "glitch buffer", { 152, 16, 120, 16 }, colours::faint);
+    g.setColour (colours::line);
+    g.drawHorizontalLine (46, 16.0f, 884.0f);
+    drawCaption (g, "Preset", { 248, 16, 50, 16 }, colours::faint);
+    // Column captions.
+    drawCaption (g, "Buffer", { 18, 512, 150, 14 }, colours::faint, juce::Justification::centred);
+    drawCaption (g, "Damage", { 732, 512, 150, 14 }, colours::faint, juce::Justification::centred);
+    drawCaption (g, "Mode", { 184, 506, 126, 14 }, colours::faint, juce::Justification::centred);
+    drawCaption (g, "Clock", { 460, 506, 160, 14 }, colours::faint, juce::Justification::centred);
+}
+
+void FaultEditor::showDrawer (int which)
+{
+    modDrawer.setVisible (which == 1);
+    settingsDrawer.setVisible (which == 2);
+    modBtn.setToggleState (which == 1, juce::dontSendNotification);
+    setBtn.setToggleState (which == 2, juce::dontSendNotification);
+    view.setVisible (which == 0);
+}
+
+float FaultEditor::param01 (const char* id) const
+{
+    return proc.getApvts().getRawParameterValue (id)->load();
+}
+
+juce::String FaultEditor::clockText() const
+{
+    const int clock = (int) std::lround (param01 ("clockSource"));
+    const int st = proc.engine().status().clockStep.load();
+    if (clock == 0)
+        return "Internal";
+    return juce::String (clock == 1 ? "Host " : "Note ") + dsp::Clock::kRateNames[(size_t) std::clamp (st, 0, 8)];
+}
+
+juce::String FaultEditor::timeText() const
+{
+    const int clock = (int) std::lround (param01 ("clockSource"));
+    const float t = param01 ("time");
+    if (clock == 0)
+        return hzOrSeconds (dsp::Clock::internalPeriodSeconds (t));
+    const int stp = dsp::Clock::hostStep (t);
+    return clock == 1 ? juce::String (kStepNotes[stp]) : juce::String (dsp::Clock::kRateNames[(size_t) stp]) + " per pulse";
+}
+
+juce::String FaultEditor::bendText() const
+{
+    const float v = param01 ("bend");
+    if (param01 ("mode") > 0.5f)
+    {
+        const float oct = -3.0f + 6.0f * v;
+        return (oct >= 0.0f ? "+" : "") + juce::String (oct, 2) + " oct";
+    }
+    float pos = 0.0f;
+    const int z = dsp::MacroTables::zoneOf (proc.macroTables().bendZoneStart, v, pos);
+    return z == 0 ? juce::String ("Off")
+                  : juce::String (kBendZones[z]) + " " + juce::String ((int) std::lround (pos * 100.0f)) + "%" + (param01 ("bendOnMacro") > 0.5f ? "" : " (off)");
+}
+
+juce::String FaultEditor::breakText() const
+{
+    const float v = param01 ("break");
+    if (param01 ("mode") > 0.5f)
+    {
+        if (param01 ("breakOnMicro") > 0.5f)
+            return juce::String ((int) std::lround (v * 90.0f)) + "% silent";
+        const int n = std::max (1, (int) std::lround (param01 ("repeats")));
+        return n <= 1 ? juce::String ("Traverse (Repeats 1)") : "Slice " + juce::String (std::min (n - 1, (int) std::floor (v * (float) n)) + 1) + " of " + juce::String (n);
+    }
+    float pos = 0.0f;
+    const int z = dsp::MacroTables::zoneOf (proc.macroTables().breakZoneStart, v, pos);
+    return z == 0 ? juce::String ("Off")
+                  : juce::String (kBreakZones[z]) + " " + juce::String ((int) std::lround (pos * 100.0f)) + "%" + (param01 ("breakOnMacro") > 0.5f ? "" : " (off)");
+}
+
+juce::String FaultEditor::corruptText() const
+{
+    const float v = param01 ("corrupt");
+    const auto type = dsp::Corrupt::effectiveType ((dsp::CorruptType) std::lround (param01 ("corruptType")),
+                                                   param01 ("corruptSet") > 0.5f ? dsp::CorruptSet::original3 : dsp::CorruptSet::all);
+    if (dsp::Corrupt::isBypass (type, v))
+        return "Off";
+    switch (type)
+    {
+        case dsp::CorruptType::decimate: return dsp::kDecimatePresets[(size_t) dsp::Corrupt::decimatePreset (v)].name;
+        case dsp::CorruptType::dropout: return juce::String (v < 0.5f ? "Few, long " : "Many, short ") + juce::String ((int) std::lround (v * 100.0f)) + "%";
+        case dsp::CorruptType::destroy:
+            return v <= 0.5f ? "Drive +" + juce::String ((int) std::lround (60.0f * v)) + " dB" : "Clip + fold " + juce::String ((int) std::lround ((v - 0.5f) * 200.0f)) + "%";
+        case dsp::CorruptType::djFilter:
+        {
+            const double t = std::clamp ((std::abs (v - 0.5) - dsp::DjFilter::kDeadZone) / (0.5 - dsp::DjFilter::kDeadZone), 0.0, 1.0);
+            const double hz = v < 0.5f ? 20000.0 * std::pow (50.0 / 20000.0, t) : 20.0 * std::pow (8000.0 / 20.0, t);
+            return juce::String (v < 0.5f ? "LP " : "HP ") + (hz >= 1000.0 ? juce::String (hz / 1000.0, 1) + " kHz" : juce::String ((int) hz) + " Hz");
+        }
+        case dsp::CorruptType::vinyl: return "Age " + juce::String ((int) std::lround (v * 100.0f)) + "%";
+    }
+    return {};
+}
+
+void FaultEditor::refreshPresetBox()
+{
+    const auto& pm = proc.presetManager();
+    if ((int) pm.presets().size() != presetCount)
+    {
+        presetCount = (int) pm.presets().size();
+        presetBox.clear (juce::dontSendNotification);
+        juce::String cat;
+        for (int i = 0; i < presetCount; ++i)
+        {
+            const auto& pr = pm.presets()[(size_t) i];
+            if (pr.category != cat)
+            {
+                presetBox.addSectionHeading (pr.category);
+                cat = pr.category;
+            }
+            presetBox.addItem (pr.name, i + 1);
+        }
+        shownPreset = {};
+    }
+    if (pm.currentName() != shownPreset || presetBox.getSelectedId() != pm.current() + 1)
+    {
+        shownPreset = pm.currentName();
+        if (pm.current() >= 0)
+            presetBox.setSelectedId (pm.current() + 1, juce::dontSendNotification);
+        else
+            presetBox.setText (shownPreset, juce::dontSendNotification);
+        if (pm.current() >= 0)
+            presetBox.setTooltip (pm.presets()[(size_t) pm.current()].about);
+    }
+}
+
+void FaultEditor::savePreset()
+{
+    saveWindow = std::make_unique<juce::AlertWindow> ("Save preset", "Saved to " + PresetManager::userFolder().getFullPathName(), juce::MessageBoxIconType::NoIcon, this);
+    saveWindow->addTextEditor ("name", proc.presetManager().currentName(), "Name");
+    saveWindow->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
+    saveWindow->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+    saveWindow->enterModalState (true, juce::ModalCallbackFunction::create ([this] (int r) {
+        if (r == 1 && saveWindow != nullptr)
+        {
+            juce::String err;
+            if (! proc.presetManager().save (saveWindow->getTextEditorContents ("name"), err))
+                juce::AlertWindow::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Couldn't save", err);
+            presetCount = -1;
+        }
+        saveWindow.reset();
+    }), false);
 }
 
 void FaultEditor::timerCallback()
 {
-    std::array<MidiLogEvent, 128> ev;
-    const int n = proc.popMidi (ev.data(), (int) ev.size());
-    for (int i = 0; i < n; ++i)
-    {
-        const auto& e = ev[(size_t) i];
-        juce::String line;
-        switch (e.kind)
-        {
-            case MidiLogEvent::Kind::noteOn: line << "note on   " << juce::MidiMessage::getMidiNoteName (e.data1, true, true, 3) << " vel " << e.data2; break;
-            case MidiLogEvent::Kind::noteOff: line << "note off  " << juce::MidiMessage::getMidiNoteName (e.data1, true, true, 3); break;
-            case MidiLogEvent::Kind::cc: line << "CC " << e.data1 << " = " << e.data2; break;
-            case MidiLogEvent::Kind::pitchBend: line << "bend " << e.data1; break;
-            case MidiLogEvent::Kind::other: break;
-        }
-        line = line.paddedRight (' ', 22) + "ch " + juce::String (e.channel) + "  @" + juce::String (e.sampleOffset) + "/" + juce::String (e.blockSize) + "\n";
-        log.moveCaretToEnd();
-        log.insertTextAtCaret (line);
-    }
-    for (int c = 0; c < dsp::kNumCcLanes; ++c)
-        ccLearn[(size_t) c].setButtonText (proc.learnCc.load() == c ? "CC " + juce::String (c + 1) + ": move a CC..."
-                                                                     : "CC " + juce::String (c + 1) + " = " + juce::String (proc.ccNumbers[(size_t) c].load()));
-    for (int g = 0; g < dsp::kNumGates; ++g)
-        gateLearn[(size_t) g].setButtonText (juce::String (params::kGateNames[g].data(), params::kGateNames[g].size()) + " "
-                                             + (proc.learnGate.load() == g ? juce::String ("...") : juce::MidiMessage::getMidiNoteName (proc.gateNotes[(size_t) g].load(), true, true, 3)));
-    {
-        const auto& st = proc.engine().status();
-        juce::String m ("modulated  time " + juce::String (st.modulated[1].load(), 2) + "  repeats " + juce::String (st.modulated[2].load(), 2)
-                        + "  mix " + juce::String (st.modulated[3].load(), 2) + "  bend " + juce::String (st.modulated[4].load(), 2)
-                        + "  break " + juce::String (st.modulated[5].load(), 2) + "  corrupt " + juce::String (st.modulated[6].load(), 2) + "\nsources ");
-        const char* sn[] = { "", "m1", "m2", "m3", "m4", "env", "cc1", "cc2", "cc3", "cc4" };
-        for (int k = 1; k < dsp::kNumModSources; ++k) m << sn[k] << " " << juce::String (st.sources[(size_t) k].load(), 2) << "  ";
-        m << (st.bendOn.load() ? " BEND" : "") << (st.breakOn.load() ? " BREAK" : "");
-        modInfo.setText (m, juce::dontSendNotification);
-    }
-    const auto& w = proc.engine().window();
-    tablesInfo.setText (proc.tablesStatus(), juce::dontSendNotification);
-    tickInfo.setText ("ticks " + juce::String ((juce::int64) proc.engine().ticksWritten()) + "   window " + juce::String (w.length / proc.engine().sampleRate(), 3)
-                          + " s   slices " + juce::String (w.repeats) + "   speed L " + juce::String (proc.engine().status().speed.load(), 2)
-                          + "x  R " + juce::String (proc.engine().status().speedR.load(), 2) + "x" + (proc.engine().buffer().frozen() ? "   FROZEN" : "")
-                          + "   corrupt " + corruptName (proc.engine().status().corrupt.load()),
-                      juce::dontSendNotification);
-    counts.setText ("note-ons " + juce::String (proc.counts[0].load()) + "   note-offs " + juce::String (proc.counts[1].load())
-                        + "   CCs " + juce::String (proc.counts[2].load()) + "   pitch bends " + juce::String (proc.counts[3].load()),
-                    juce::dontSendNotification);
+    auto& s = proc.getApvts();
+    const bool micro = param01 ("mode") > 0.5f;
+    // The Bend / Break buttons act on the current mode's toggle (DECISIONS D9).
+    bendOn.attach (s, micro ? "bendOnMicro" : "bendOnMacro");
+    breakOn.attach (s, micro ? "breakOnMicro" : "breakOnMacro");
+    bendOn.setButtonText (micro ? "Reverse" : "Bend");
+    breakOn.setButtonText (micro ? "Silence" : "Break");
+    macroBtn.setToggleState (! micro, juce::dontSendNotification);
+    microBtn.setToggleState (micro, juce::dontSendNotification);
+    const int clock = (int) std::lround (param01 ("clockSource"));
+    intBtn.setToggleState (clock == 0, juce::dontSendNotification);
+    hostBtn.setToggleState (clock == 1, juce::dontSendNotification);
+    noteBtn.setToggleState (clock == 2, juce::dontSendNotification);
+    // A gate can freeze without the parameter: the button shows what the buffer is doing.
+    freeze.setColour (juce::TextButton::textColourOffId, proc.engine().status().frozen.load() ? colours::freeze : colours::dim);
+
+    for (auto* k : { time.get(), repeats.get(), mix.get(), bend.get(), brk.get(), corrupt.get() })
+        k->refresh();
+    if (view.isVisible()) view.tick();
+    if (modDrawer.isVisible()) modDrawer.tick();
+    if (settingsDrawer.isVisible()) settingsDrawer.tick();
+    refreshPresetBox();
 }
 } // namespace fault

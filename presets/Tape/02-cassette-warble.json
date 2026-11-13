@@ -1,0 +1,27 @@
+{
+ "name": "Cassette Warble",
+ "category": "Tape",
+ "about": "A tired cassette: slow pitch drift and soft saturation, a beat behind.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 60,
+  "windowing": 10,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "mod1Shape": "Smooth Random",
+  "mod1Sync": "Free",
+  "mod1Rate": 0.6,
+  "mod1Polarity": "Bipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Bend",
+  "route1Depth": 3,
+  "corruptType": "Destroy",
+  "corrupt": 0.18
+ }
+}

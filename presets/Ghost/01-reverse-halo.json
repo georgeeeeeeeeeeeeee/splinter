@@ -1,0 +1,16 @@
+{
+ "name": "Reverse Halo",
+ "category": "Ghost",
+ "about": "The last beat plays backwards behind you, soft-edged and wide.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 45,
+  "windowing": 35,
+  "width": 85,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.1925
+ }
+}

@@ -1,0 +1,16 @@
+{
+ "name": "Bit Rot",
+ "category": "Ruin",
+ "about": "Crushed to a few bits while the slices fall apart.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 4,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.91,
+  "corruptType": "Decimate",
+  "corrupt": 0.95
+ }
+}

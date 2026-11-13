@@ -1,0 +1,16 @@
+{
+ "name": "Octave Ghost",
+ "category": "Ghost",
+ "about": "Octave echoes, up and down, under the dry signal.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.375,
+  "repeats": 1,
+  "mix": 30,
+  "windowing": 45,
+  "width": 80,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.425
+ }
+}

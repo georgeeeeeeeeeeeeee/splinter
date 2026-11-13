@@ -1,0 +1,16 @@
+{
+ "name": "Shred",
+ "category": "Ruin",
+ "about": "Torn to pieces: silence and dropouts everywhere.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.875,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.769,
+  "corruptType": "Dropout",
+  "corrupt": 0.9
+ }
+}

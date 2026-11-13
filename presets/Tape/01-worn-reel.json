@@ -1,0 +1,16 @@
+{
+ "name": "Worn Reel",
+ "category": "Tape",
+ "about": "Now and then the reel drags to a stop; a little wow and dust on top.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 70,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.701,
+  "corruptType": "Vinyl",
+  "corrupt": 0.3
+ }
+}

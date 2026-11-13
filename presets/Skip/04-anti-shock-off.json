@@ -1,0 +1,16 @@
+{
+ "name": "Anti-Shock Off",
+ "category": "Skip",
+ "about": "Free-running skips and backwards hiccups, off the beat.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 0.55,
+  "repeats": 4,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.275,
+  "bendOnMacro": true,
+  "bend": 0.095
+ }
+}

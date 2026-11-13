@@ -1,0 +1,25 @@
+{
+ "name": "Whisper Back",
+ "category": "Ghost",
+ "about": "Everything reversed and soft, drifting slightly in pitch.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.375,
+  "repeats": 2,
+  "mix": 40,
+  "windowing": 60,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": true,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "mod1Shape": "Triangle",
+  "mod1Sync": "2 bars",
+  "mod1Rate": 1.0,
+  "mod1Polarity": "Bipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Bend",
+  "route1Depth": 2
+ }
+}

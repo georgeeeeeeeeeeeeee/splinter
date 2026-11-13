@@ -1,0 +1,18 @@
+{
+ "name": "Under Water",
+ "category": "Ghost",
+ "about": "Gliding, muffled repeats behind a low-pass.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 60,
+  "windowing": 25,
+  "width": 70,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.545,
+  "corruptType": "DJ Filter",
+  "corrupt": 0.22
+ }
+}

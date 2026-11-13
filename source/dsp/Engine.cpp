@@ -27,6 +27,7 @@ void Engine::prepare (double sampleRate, int)
 {
     sr_ = sampleRate;
     buf_.prepare (sampleRate);
+    overview_.prepare (buf_.capacity());
     clock_.prepare (sampleRate);
     corrupt_.prepare (sampleRate);
     env_.prepare (sampleRate);
@@ -39,6 +40,8 @@ void Engine::prepare (double sampleRate, int)
 void Engine::reset() noexcept
 {
     buf_.reset();
+    overview_.reset();
+    jumps_ = { 0, 0 };
     clock_.reset();
     clock_.setSource (p_.clock);
     clock_.setTime (p_.time);
@@ -483,6 +486,8 @@ void Engine::onTick (int64_t tickIndex) noexcept
             w.repeats = std::min (kMaxPieces, next.repeats * v.pieces);
             w.slice = std::clamp (c.slice, 0, w.repeats - 1);
             v.duty = c.duty;
+            if ((c.mask & (1u << breakJump)) != 0)
+                ++jumps_[(size_t) ch];
         }
         if (w.valid())
             jump (v, w);
@@ -527,6 +532,8 @@ void Engine::renderSegment (const float* inL, const float* inR, float* outL, flo
             onTick (clock_.tickIndex (nextTick));
             ++nextTick;
         }
+        if (! buf_.frozen())
+            overview_.push (xl, xr);
         buf_.write (xl, xr);
 
         std::array<float, 2> wet { 0.0f, 0.0f };
@@ -543,6 +550,7 @@ void Engine::renderSegment (const float* inL, const float* inR, float* outL, flo
                     spawnTail (v, v.head.duration (v.win.sliceLength()));
                     v.win.slice = sl;
                     fadeInHead (v);
+                    ++jumps_[(size_t) ch];
                     if (ch == 0)
                         ++sliceChanges_;
                 }
@@ -680,6 +688,21 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
     status_.bendOn.store (p_.mode == Mode::micro ? p_.bendOnMicro : p_.bendOnMacro, std::memory_order_relaxed);
     status_.breakOn.store (p_.mode == Mode::micro ? p_.breakOnMicro : p_.breakOnMacro, std::memory_order_relaxed);
     status_.corruptType.store ((int) p_.corruptType, std::memory_order_relaxed);
+    status_.windowStart.store (voices_[0].win.start, std::memory_order_relaxed);
+    status_.windowLength.store (voices_[0].win.length, std::memory_order_relaxed);
+    status_.period.store (clock_.periodSamples(), std::memory_order_relaxed);
+    status_.clockStep.store (clock_.step(), std::memory_order_relaxed);
+    status_.written.store (buf_.written(), std::memory_order_relaxed);
+    for (size_t ch = 0; ch < 2; ++ch)
+    {
+        const auto& v = voices_[ch];
+        status_.head[ch].store (v.win.sliceStart() + v.head.offset, std::memory_order_relaxed);
+        status_.headSpeed[ch].store ((float) v.head.speed, std::memory_order_relaxed);
+        status_.pieces[ch].store (v.win.repeats, std::memory_order_relaxed);
+        status_.sliceIndex[ch].store (v.win.slice, std::memory_order_relaxed);
+        status_.duty[ch].store (p_.mode == Mode::micro ? (p_.breakOnMicro ? 0.9f * p_.brk : 0.0f) : (float) v.duty, std::memory_order_relaxed);
+        status_.jumps[ch].store (jumps_[ch], std::memory_order_relaxed);
+    }
 }
 } // namespace fault::dsp
 

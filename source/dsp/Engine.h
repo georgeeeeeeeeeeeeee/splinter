@@ -14,6 +14,7 @@
 #include "dsp/Corrupt/Corrupt.h"
 #include "dsp/MacroBreak.h"
 #include "dsp/Modulation.h"
+#include "dsp/Overview.h"
 #include "dsp/Playhead.h"
 #include "dsp/RecordBuffer.h"
 #include "dsp/Rng.h"
@@ -139,7 +140,16 @@ public:
         std::array<std::atomic<float>, kNumModSources> sources {};
         std::atomic<bool> frozen { false }, bendOn { false }, breakOn { false };
         std::atomic<int> corruptType { 0 };
+        // Stage 6, the buffer view: the window, each voice's slice and head, written once per block.
+        std::atomic<double> windowStart { 0.0 }, windowLength { 0.0 }, period { 0.0 };
+        std::array<std::atomic<double>, 2> head {};          // absolute buffer position
+        std::array<std::atomic<float>, 2> headSpeed {}, duty {};
+        std::array<std::atomic<int>, 2> pieces {}, sliceIndex {};
+        std::array<std::atomic<uint32_t>, 2> jumps {};       // slice jumps (Traverse, Macro jump)
+        std::atomic<int64_t> written { 0 };
+        std::atomic<int> clockStep { 4 };
     };
+    const Overview& overview() const noexcept { return overview_; }
     const Status& status() const noexcept { return status_; }
     const RecordBuffer& buffer() const noexcept { return buf_; }
     const Clock& clock() const noexcept { return clock_; }
@@ -221,6 +231,9 @@ private:
 
     // Stage 4.
     Corrupt corrupt_;
+    // Stage 6.
+    Overview overview_;
+    std::array<uint32_t, 2> jumps_ {};
 
     // Stage 5.
     std::array<Modulator, kNumModulators> mods_ {};

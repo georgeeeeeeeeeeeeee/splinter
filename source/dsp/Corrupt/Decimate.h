@@ -15,6 +15,7 @@ namespace fault::dsp
 {
 struct DecimatePreset
 {
+    const char* name;   // for the UI
     float bits;      // quantiser resolution (fractional is fine)
     float rateHz;    // sample-and-hold rate, in Hz (the same at any host rate)
     float driveDb;   // into the quantiser (clipped at full scale), compensated after
@@ -24,18 +25,18 @@ struct DecimatePreset
 
 // In knob order. Shuffled on purpose: a resolution step, then a rate step, then both.
 inline constexpr std::array<DecimatePreset, 12> kDecimatePresets { {
-    { 12.0f, 48000.0f, 0.0f, 0.00f, 0.0015f },   // faint hiss
-    { 10.0f, 44100.0f, 0.0f, 0.00f, 0.0f },      // grainy tails
-    { 14.0f, 11025.0f, 0.0f, 0.00f, 0.0f },      // early sampler
-    { 8.0f, 22050.0f, 0.0f, 0.00f, 0.0005f },    // 8-bit
-    { 12.0f, 6000.0f, 0.0f, 0.15f, 0.0f },       // muffled, unsteady
-    { 6.0f, 16000.0f, 3.0f, 0.00f, 0.0f },       // crunchy
-    { 9.0f, 4000.0f, 0.0f, 0.05f, 0.0f },        // telephone ghost
-    { 5.0f, 8000.0f, 4.0f, 0.30f, 0.002f },      // broken toy
-    { 7.0f, 2500.0f, 3.0f, 0.00f, 0.0f },        // metallic
-    { 4.0f, 12000.0f, 6.0f, 0.10f, 0.0f },       // fizz
-    { 3.0f, 3000.0f, 8.0f, 0.50f, 0.0f },        // gravel
-    { 2.0f, 1500.0f, 12.0f, 0.60f, 0.004f },     // blown out
+    { "faint hiss", 12.0f, 48000.0f, 0.0f, 0.00f, 0.0015f },
+    { "grainy tails", 10.0f, 44100.0f, 0.0f, 0.00f, 0.0f },
+    { "early sampler", 14.0f, 11025.0f, 0.0f, 0.00f, 0.0f },
+    { "8-bit", 8.0f, 22050.0f, 0.0f, 0.00f, 0.0005f },
+    { "muffled, unsteady", 12.0f, 6000.0f, 0.0f, 0.15f, 0.0f },
+    { "crunchy", 6.0f, 16000.0f, 3.0f, 0.00f, 0.0f },
+    { "telephone ghost", 9.0f, 4000.0f, 0.0f, 0.05f, 0.0f },
+    { "broken toy", 5.0f, 8000.0f, 4.0f, 0.30f, 0.002f },
+    { "metallic", 7.0f, 2500.0f, 3.0f, 0.00f, 0.0f },
+    { "fizz", 4.0f, 12000.0f, 6.0f, 0.10f, 0.0f },
+    { "gravel", 3.0f, 3000.0f, 8.0f, 0.50f, 0.0f },
+    { "blown out", 2.0f, 1500.0f, 12.0f, 0.60f, 0.004f },
 } };
 
 class Decimate

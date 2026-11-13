@@ -3,6 +3,7 @@
 // only logged to the editor (lock-free FIFO, with the event's sample offset in the block) until Stage 5.
 
 #include "dsp/Engine.h"
+#include "plugin/Presets.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -58,6 +59,14 @@ public:
     std::atomic<int> learnCc { -1 }, learnGate { -1 };
     void restoreDefaults();   // message thread
 
+    // Stage 6.
+    PresetManager& presetManager() noexcept { return presets_; }
+    // Drag-to-assign: source (dsp::ModSource) onto destination (dsp::ModDest). Reuses a route that
+    // already joins the two, else the first empty slot (depth 50%). Returns the slot, or -1 if all 8 are
+    // taken. Message thread.
+    int assignRoute (int source, int dest);
+    const dsp::MacroTables& macroTables() const noexcept { return tablesUi_; }   // message thread
+
 private:
     void timerCallback() override;   // dev builds: watch the tables file
     dsp::EngineParams readParams() const noexcept;
@@ -75,6 +84,8 @@ private:
     std::array<std::atomic<float>*, dsp::kNumCcLanes> rawCcPolarity {};
 
     dsp::Engine engine_;
+    dsp::MacroTables tablesUi_ = dsp::MacroTables::defaults();
+    PresetManager presets_ { apvts };
     bool resetHeld = false;
     static constexpr int kFifo = 512;
     juce::AbstractFifo fifo { kFifo };

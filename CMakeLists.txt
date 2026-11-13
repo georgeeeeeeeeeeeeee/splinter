@@ -46,14 +46,22 @@ juce_add_plugin(Fault
     AU_MAIN_TYPE            kAudioUnitType_MusicEffect   # an effect that takes MIDI: AU type 'aumf'
     MICROPHONE_PERMISSION_ENABLED TRUE)
 
+# Factory presets, compiled in (brief §5 / Stage 6). presets/<Category>/*.json
+file(GLOB FAULT_PRESET_FILES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/presets/*/*.json)
+juce_add_binary_data(FaultPresetData HEADER_NAME FaultPresetData.h NAMESPACE FaultPresetData SOURCES ${FAULT_PRESET_FILES})
+
 add_library(fault_plugin_code INTERFACE)
 target_sources(fault_plugin_code INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/PluginProcessor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/PluginEditor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/TablesJson.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/TablesJson.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/plugin/Presets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/ui/BufferView.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/ui/ModDrawer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/ui/SettingsDrawer.cpp)
 target_include_directories(fault_plugin_code INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/source)
 target_compile_definitions(fault_plugin_code INTERFACE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
-target_link_libraries(fault_plugin_code INTERFACE fault_dsp juce::juce_audio_utils)
+target_link_libraries(fault_plugin_code INTERFACE fault_dsp FaultPresetData juce::juce_audio_utils)
 # Dev builds watch tuning/macro_tables.json and hot-reload it (brief §3.6). Release builds turn this off
 # and use the baked tables (fault-render --bake-tables).
 option(FAULT_DEV_TABLES "Plug-in hot-reloads tuning/macro_tables.json" ON)
@@ -66,6 +74,7 @@ target_link_libraries(Fault PRIVATE fault_plugin_code PUBLIC
 
 # ---- Tools + tests ----------------------------------------------------------
 add_subdirectory(tools/render)
+add_subdirectory(tools/presets)
 option(FAULT_BUILD_TESTS "Build DSP unit tests" ON)
 if(FAULT_BUILD_TESTS)
     enable_testing()

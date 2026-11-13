@@ -1,0 +1,16 @@
+{
+ "name": "Track Seek",
+ "category": "Skip",
+ "about": "Searching for the next track: buzzing seeks through a thin high-pass.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 4,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.53,
+  "corruptType": "DJ Filter",
+  "corrupt": 0.7
+ }
+}

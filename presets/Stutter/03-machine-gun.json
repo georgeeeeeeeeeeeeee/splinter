@@ -1,0 +1,16 @@
+{
+ "name": "Machine Gun",
+ "category": "Stutter",
+ "about": "Audio-rate repeats and drive: a buzz saw on the hits.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.875,
+  "repeats": 8,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.56,
+  "corruptType": "Destroy",
+  "corrupt": 0.35
+ }
+}

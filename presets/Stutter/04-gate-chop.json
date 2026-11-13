@@ -1,0 +1,24 @@
+{
+ "name": "Gate Chop",
+ "category": "Stutter",
+ "about": "Each slice cut short, more on every other half bar.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 4,
+  "mix": 100,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": true,
+  "break": 0.55,
+  "mod2Shape": "Square",
+  "mod2Sync": "1/2",
+  "mod2Rate": 1.0,
+  "mod2Polarity": "Bipolar",
+  "mod2Phase": 0.0,
+  "route1Source": "Mod 2",
+  "route1Dest": "Break",
+  "route1Depth": 20
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "name": "Faded Memory",
+ "category": "Ghost",
+ "about": "Old audio, worn and half-reversed, half a bar behind.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.375,
+  "repeats": 2,
+  "mix": 50,
+  "windowing": 30,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.095,
+  "corruptType": "Vinyl",
+  "corrupt": 0.6
+ }
+}

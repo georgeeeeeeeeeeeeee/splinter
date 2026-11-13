@@ -60,3 +60,12 @@ Wow as a modulated delay (at most ~3 ms, linear interpolation) keeps Vinyl self-
 
 ## D19 — Modulation and gate parameters (Stage 5)
 Parameters: `bendAtten`, `breakAtten`, `corruptAtten` (default 100%); `gateMode`; `corruptAsReset`; per modulator `mod<n>Shape/Rate/Sync/Phase/Polarity` (Sync is "Free" or a synced length, so one choice replaces a sync toggle plus a division); `envAttack/Release/Gain`; `cc<n>Polarity`; per route `route<n>Source/Dest/Depth`. 78 parameters in all; state version 6. The CC numbers and gate notes are plug-in state (`ccNumbers` and `gateNotes` properties), learnt from the editor via atomics the audio thread reads each block.
+
+## D20 — The editor (Stage 6)
+`source/ui/`: `Theme.h` (colour tokens and the LookAndFeel), `Knob.h` (rotary with a modulation ring; a drag-and-drop target), `Controls.h` (labelled slider, combo, toggle button, source chip, scope), `BufferView`, `ModDrawer`, `SettingsDrawer`. The editor lays everything out once at 900 × 560 inside a content component and scales it with an affine transform, so every size looks the same. It reads the engine only through `Engine::Status` atomics and `Engine::overview()`, a lock-free min/max overview (32-sample buckets, written alongside the record buffer). Everything refreshes from one 60 Hz timer.
+
+## D21 — Presets as JSON, compiled in (Stage 6)
+Factory presets are `presets/<Category>/NN-name.json`, compiled in with `juce_add_binary_data`. User presets use the same format in the user's app-data folder. Loading sets every parameter: the listed value, or the default. The plug-in reports a bad key but carries on; `fault-presets --check` is strict and fails. Programs aren't exposed to the host (`getNumPrograms` stays 1): some hosts call `setCurrentProgram (0)` on load, which would overwrite a restored session.
+
+## D22 — `fault-presets`: the real processor offline
+A console tool that links the plug-in code. It renders each preset through `FaultProcessor::processBlock` with a fake playhead (120 BPM, playing) and reports peak and RMS against dry, failing on NaN/Inf or a peak over +6 dBFS. It also snapshots the editor to PNG (`--snapshot`, optionally with a drawer open), which is how the UI was checked without a display.

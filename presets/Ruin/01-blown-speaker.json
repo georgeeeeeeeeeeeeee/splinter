@@ -1,0 +1,18 @@
+{
+ "name": "Blown Speaker",
+ "category": "Ruin",
+ "about": "Everything at once through a speaker that's had enough.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.874,
+  "breakOnMacro": true,
+  "break": 0.874,
+  "corruptType": "Destroy",
+  "corrupt": 0.85
+ }
+}

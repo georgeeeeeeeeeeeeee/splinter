@@ -1,0 +1,14 @@
+{
+ "name": "Ratchet Roll",
+ "category": "Stutter",
+ "about": "Beats break into fast ratchets on the transient.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.4925
+ }
+}
