@@ -8,13 +8,43 @@ namespace
 {
 juce::String toJuce (std::string_view s) { return juce::String (s.data(), s.size()); }
 
+std::unique_ptr<juce::AudioParameterFloat> makeFloat (const params::FloatSpec& s, juce::NormalisableRange<float> range,
+                                                      std::function<juce::String (float, int)> text)
+{
+    return std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { toJuce (s.id), 1 }, toJuce (s.name), range, s.def,
+                                                        juce::AudioParameterFloatAttributes().withLabel (toJuce (s.unit)).withStringFromValueFunction (std::move (text)));
+}
+
+juce::StringArray names (std::initializer_list<std::string_view> list)
+{
+    juce::StringArray a;
+    for (auto s : list) a.add (toJuce (s));
+    return a;
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout layout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout l;
-    const auto& g = params::gain;
-    l.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { toJuce (g.id), 1 }, toJuce (g.name),
-                                                        juce::NormalisableRange<float> (g.min, g.max, 0.01f), g.def,
-                                                        juce::AudioParameterFloatAttributes().withLabel (toJuce (g.unit))));
+    const auto pct = [] (float v, int) { return juce::String (v, v < 10.0f ? 1 : 0) + "%"; };
+    l.add (makeFloat (params::time, { 0.0f, 1.0f }, [] (float v, int) {
+        const double s = dsp::Clock::internalPeriodSeconds (v);   // the internal period; synced: see the step names
+        return (s >= 1.0 ? juce::String (s, 2) + " s" : juce::String (s * 1000.0, 1) + " ms") + "  /  " + dsp::Clock::kRateNames[(size_t) dsp::Clock::hostStep (v)];
+    }));
+    // Repeats: an exponential knob over whole steps 1..32 (more travel for the low counts).
+    juce::NormalisableRange<float> rep (1.0f, 32.0f,
+                                        [] (float, float, float x) { return std::round (std::pow (32.0f, x)); },
+                                        [] (float, float, float v) { return std::log (std::max (1.0f, v)) / std::log (32.0f); },
+                                        [] (float, float, float v) { return std::clamp (std::round (v), 1.0f, 32.0f); });
+    l.add (makeFloat (params::repeats, rep, [] (float v, int) { return juce::String ((int) v); }));
+    l.add (makeFloat (params::mix, { 0.0f, 100.0f }, pct));
+    l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (params::freezeId), 1 }, "Freeze", false));
+    l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { toJuce (params::freezeButtonModeId), 1 }, "Freeze Button",
+                                                         names ({ params::kFreezeModes[0], params::kFreezeModes[1] }), 0));
+    l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { toJuce (params::clockSourceId), 1 }, "Clock",
+                                                         names ({ params::kClockSources[0], params::kClockSources[1], params::kClockSources[2] }), 0));
+    l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (params::resetId), 1 }, "Reset", false));
+    l.add (makeFloat (params::windowing, { 0.0f, 100.0f, 0.0f, 0.5f }, pct));
+    l.add (makeFloat (params::width, { 0.0f, 100.0f }, pct));
     return l;
 }
 } // namespace
@@ -24,7 +54,26 @@ FaultProcessor::FaultProcessor()
                                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "FaultState", layout())
 {
-    gainDb = apvts.getRawParameterValue (toJuce (params::gain.id));
+    const auto get = [this] (std::string_view id) { return apvts.getRawParameterValue (toJuce (id)); };
+    raw = { get (params::time.id), get (params::repeats.id), get (params::mix.id), get (params::windowing.id), get (params::width.id),
+            get (params::freezeId), get (params::resetId), get (params::clockSourceId), get (params::freezeButtonModeId) };
+    engine_.setParams (readParams());
+    engine_.prepare (48000.0, 512);   // playable even before prepareToPlay; re-prepared there
+}
+
+dsp::EngineParams FaultProcessor::readParams() const noexcept
+{
+    dsp::EngineParams p;
+    p.time = raw.time->load();
+    p.repeats = (int) std::round (raw.repeats->load());
+    p.mix = raw.mix->load() * 0.01f;
+    p.windowing = raw.windowing->load() * 0.01f;
+    p.width = raw.width->load() * 0.01f;
+    p.freeze = raw.freeze->load() > 0.5f;
+    p.freezeMode = raw.freezeMode->load() > 0.5f ? dsp::FreezeMode::momentary : dsp::FreezeMode::latching;
+    const int clock = (int) raw.clock->load();
+    p.clock = clock == 1 ? dsp::ClockSource::host : dsp::ClockSource::internal;   // Note clock: Stage 5
+    return p;
 }
 
 bool FaultProcessor::isBusesLayoutSupported (const BusesLayout& l) const
@@ -33,10 +82,10 @@ bool FaultProcessor::isBusesLayoutSupported (const BusesLayout& l) const
     return (out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono()) && in.size() <= out.size() && ! in.isDisabled();
 }
 
-void FaultProcessor::prepareToPlay (double sampleRate, int)
+void FaultProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    gain.reset (sampleRate, 0.02);
-    gain.setCurrentAndTargetValue (params::dbToGain (gainDb->load()));
+    engine_.setParams (readParams());
+    engine_.prepare (sampleRate, samplesPerBlock);   // allocates the ~65 s buffer: never on the audio thread
 }
 
 void FaultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
@@ -60,15 +109,35 @@ void FaultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
             fifoData[(size_t) scope.startIndex1] = e;   // full: dropped (the log is only a monitor)
     }
 
-    gain.setTargetValue (params::dbToGain (gainDb->load()));
+    engine_.setParams (readParams());
+    const bool reset = raw.reset->load() > 0.5f;   // Reset fires on the button's rising edge
+    if (reset && ! resetHeld)
+        engine_.triggerReset();
+    resetHeld = reset;
+
+    dsp::HostTransport t;
+    if (auto* ph = getPlayHead())
+        if (const auto pos = ph->getPosition())
+        {
+            t.valid = pos->getBpm().hasValue() && pos->getPpqPosition().hasValue();
+            t.playing = pos->getIsPlaying();
+            t.bpm = pos->getBpm().orFallback (120.0);
+            t.ppq = pos->getPpqPosition().orFallback (0.0);
+        }
+    engine_.setTransport (t);
+
     const int ins = getTotalNumInputChannels(), outs = getTotalNumOutputChannels();
     for (int ch = ins; ch < outs; ++ch)   // mono in, stereo out: copy
         buffer.copyFrom (ch, 0, buffer, 0, 0, n);
-    for (int i = 0; i < n; ++i)
+    if (n == 0 || outs == 0)
+        return;
+    float* l = buffer.getWritePointer (0);
+    float* r = buffer.getWritePointer (outs > 1 ? 1 : 0);
+    if (outs > 1)
+        engine_.process (l, r, l, r, n);
+    else
     {
-        const float g = gain.getNextValue();
-        for (int ch = 0; ch < outs; ++ch)
-            buffer.setSample (ch, i, buffer.getSample (ch, i) * g);
+        engine_.process (l, l, l, l, n);   // mono out: the engine's left
     }
 }
 

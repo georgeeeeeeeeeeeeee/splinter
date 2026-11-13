@@ -1,5 +1,5 @@
 #pragma once
-// Stage 0 debug editor: the gain slider and a MIDI monitor. Replaced in Stage 6.
+// Debug editor (Stages 0-5): one control per parameter, the clock's state and a MIDI monitor. Replaced in Stage 6.
 
 #include "plugin/PluginProcessor.h"
 
@@ -17,8 +17,10 @@ public:
 private:
     void timerCallback() override;
     FaultProcessor& proc;
-    juce::Slider gain;
-    std::unique_ptr<juce::SliderParameterAttachment> gainAttach;
+    struct Row { std::unique_ptr<juce::Label> label; std::unique_ptr<juce::Component> control; std::unique_ptr<juce::SliderParameterAttachment> s;
+                 std::unique_ptr<juce::ComboBoxParameterAttachment> c; std::unique_ptr<juce::ButtonParameterAttachment> b; };
+    std::vector<Row> rows;
+    juce::Label tickInfo;
     juce::TextEditor log;
     juce::Label counts;
 };

@@ -1,0 +1,1 @@
+{"clock":"host","time":0.5,"repeats":4,"mix":1,"tempo":{"bpm":120,"playing":true},"block":"random","automation":[{"time":4.0,"param":"freeze","value":true},{"time":10.0,"param":"freeze","value":false}]}

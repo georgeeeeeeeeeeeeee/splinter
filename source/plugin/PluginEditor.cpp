@@ -4,10 +4,39 @@ namespace fault
 {
 FaultEditor::FaultEditor (FaultProcessor& p) : AudioProcessorEditor (p), proc (p)
 {
-    gain.setSliderStyle (juce::Slider::LinearHorizontal);
-    gain.setTextBoxStyle (juce::Slider::TextBoxRight, false, 80, 20);
-    gainAttach = std::make_unique<juce::SliderParameterAttachment> (*p.getApvts().getParameter ("gain"), gain);
-    addAndMakeVisible (gain);
+    for (auto* prm : p.getParameters())
+    {
+        auto* r = dynamic_cast<juce::RangedAudioParameter*> (prm);
+        if (r == nullptr) continue;
+        Row row;
+        row.label = std::make_unique<juce::Label> (juce::String(), r->getName (24));
+        row.label->setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+        if (auto* ch = dynamic_cast<juce::AudioParameterChoice*> (r))
+        {
+            auto box = std::make_unique<juce::ComboBox>();
+            box->addItemList (ch->choices, 1);
+            row.c = std::make_unique<juce::ComboBoxParameterAttachment> (*ch, *box);
+            row.control = std::move (box);
+        }
+        else if (auto* b = dynamic_cast<juce::AudioParameterBool*> (r))
+        {
+            auto t = std::make_unique<juce::ToggleButton>();
+            row.b = std::make_unique<juce::ButtonParameterAttachment> (*b, *t);
+            row.control = std::move (t);
+        }
+        else
+        {
+            auto s = std::make_unique<juce::Slider> (juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+            s->setTextBoxStyle (juce::Slider::TextBoxRight, false, 140, 20);
+            row.s = std::make_unique<juce::SliderParameterAttachment> (*r, *s);
+            row.control = std::move (s);
+        }
+        addAndMakeVisible (*row.label);
+        addAndMakeVisible (*row.control);
+        rows.push_back (std::move (row));
+    }
+    tickInfo.setColour (juce::Label::textColourId, juce::Colour (0xff4fd1b5));
+    addAndMakeVisible (tickInfo);
     log.setMultiLine (true);
     log.setReadOnly (true);
     log.setCaretVisible (false);
@@ -17,7 +46,7 @@ FaultEditor::FaultEditor (FaultProcessor& p) : AudioProcessorEditor (p), proc (p
     addAndMakeVisible (log);
     counts.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (counts);
-    setSize (560, 380);
+    setSize (620, 640);
     startTimerHz (30);
 }
 
@@ -29,15 +58,21 @@ void FaultEditor::paint (juce::Graphics& g)
     g.drawText ("FAULT", 16, 10, 200, 28, juce::Justification::centredLeft);
     g.setColour (juce::Colours::grey);
     g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("Stage 0 host check  v" JucePlugin_VersionString, 200, 10, 344, 28, juce::Justification::centredRight);
+    g.drawText ("Stage 1 debug UI  v" JucePlugin_VersionString, 200, 10, 344, 28, juce::Justification::centredRight);
 }
 
 void FaultEditor::resized()
 {
     auto r = getLocalBounds().reduced (16);
     r.removeFromTop (34);
-    gain.setBounds (r.removeFromTop (28));
-    r.removeFromTop (8);
+    for (auto& row : rows)
+    {
+        auto line = r.removeFromTop (26);
+        row.label->setBounds (line.removeFromLeft (120));
+        row.control->setBounds (line.reduced (0, 2));
+    }
+    tickInfo.setBounds (r.removeFromTop (24));
+    r.removeFromTop (6);
     counts.setBounds (r.removeFromBottom (22));
     log.setBounds (r);
 }
@@ -62,6 +97,10 @@ void FaultEditor::timerCallback()
         log.moveCaretToEnd();
         log.insertTextAtCaret (line);
     }
+    const auto& w = proc.engine().window();
+    tickInfo.setText ("ticks " + juce::String ((juce::int64) proc.engine().ticksWritten()) + "   window " + juce::String (w.length / proc.engine().sampleRate(), 3)
+                          + " s   repeats " + juce::String (w.repeats) + (proc.engine().buffer().frozen() ? "   FROZEN" : ""),
+                      juce::dontSendNotification);
     counts.setText ("note-ons " + juce::String (proc.counts[0].load()) + "   note-offs " + juce::String (proc.counts[1].load())
                         + "   CCs " + juce::String (proc.counts[2].load()) + "   pitch bends " + juce::String (proc.counts[3].load()),
                     juce::dontSendNotification);

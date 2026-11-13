@@ -1,6 +1,8 @@
 #pragma once
-// Stage 0 host check: stereo pass-through with one smoothed gain parameter, MIDI input logged to the
-// editor through a lock-free FIFO (audio thread -> UI), with the event's sample offset in the block.
+// The plug-in shell around dsp::Engine: parameters, host playhead -> clock, state. MIDI input is still
+// only logged to the editor (lock-free FIFO, with the event's sample offset in the block) until Stage 5.
+
+#include "dsp/Engine.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -44,11 +46,14 @@ public:
     juce::AudioProcessorValueTreeState& getApvts() noexcept { return apvts; }
     int popMidi (MidiLogEvent* dest, int max) noexcept;   // UI thread
     std::array<std::atomic<int>, 4> counts {};             // notes on, notes off, CCs, pitch bends
+    const dsp::Engine& engine() const noexcept { return engine_; }
 
 private:
+    dsp::EngineParams readParams() const noexcept;
     juce::AudioProcessorValueTreeState apvts;
-    std::atomic<float>* gainDb = nullptr;
-    juce::SmoothedValue<float> gain;
+    struct Raw { std::atomic<float> *time, *repeats, *mix, *windowing, *width, *freeze, *reset, *clock, *freezeMode; } raw {};
+    dsp::Engine engine_;
+    bool resetHeld = false;
     static constexpr int kFifo = 512;
     juce::AbstractFifo fifo { kFifo };
     std::array<MidiLogEvent, kFifo> fifoData {};

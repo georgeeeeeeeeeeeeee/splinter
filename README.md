@@ -2,7 +2,13 @@
 
 A circuit-bent digital buffer effect (AU + VST3). It records audio into a long stereo buffer and, on every clock tick, plays a window of it back broken: stutters, reverse, varispeed, tape stops, skips, dropouts, then bitcrush, saturation, filter and vinyl. An original product.
 
-Status: **Stage 0**, scaffold and host check. The plugin passes audio through with one Gain parameter and logs incoming MIDI notes and CCs with their sample offsets.
+Status: **Stage 1**, buffer core. The record buffer, Internal and Host clocks, windows and Repeats, the playhead, slice windowing, Freeze, Mix and Width all work, with a render CLI and unit tests. The UI is a debug panel; MIDI is only logged so far.
+
+```
+build/tests/fault_tests                       # unit tests
+python3 tools/make_fixtures.py [voice.wav]    # test material (needs numpy, scipy)
+scripts/checkpoint1.sh   (or .ps1)             # renders: build/renders/stage1/*.wav + .png + .csv
+```
 
 ## Install (unsigned build)
 

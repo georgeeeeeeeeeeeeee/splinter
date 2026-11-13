@@ -56,3 +56,11 @@ target_link_libraries(fault_plugin_code INTERFACE fault_dsp juce::juce_audio_uti
 
 target_link_libraries(Fault PRIVATE fault_plugin_code PUBLIC
     juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
+
+# ---- Tools + tests ----------------------------------------------------------
+add_subdirectory(tools/render)
+option(FAULT_BUILD_TESTS "Build DSP unit tests" ON)
+if(FAULT_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
