@@ -1,0 +1,140 @@
+name: Build
+
+# Mac (universal AU + VST3) and Windows (x64 VST3) release builds, with the DSP unit tests,
+# the macro-table bake check and pluginval at strictness 10. Packages are uploaded as artifacts.
+#
+# Runs on release tags (v*) and when started by hand (Actions > Build > Run workflow), not on
+# every push: the repository is private, and GitHub counts macOS minutes at ten times the rate.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The JUCE commit Fault is developed against (~/JUCE on George's Mac, November 2026).
+  JUCE_SHA: 501c07674e1ad693085a7e7c398f205c2677f5da
+  PLUGINVAL_VERSION: v1.0.4
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (universal)
+            os: macos-latest
+            generator: ''
+            exe: ''
+            pluginval_zip: pluginval_macOS.zip
+            pluginval: pluginval/pluginval.app/Contents/MacOS/pluginval
+            platform: mac
+          - name: Windows (x64)
+            os: windows-latest
+            generator: -G "Visual Studio 17 2022" -A x64
+            exe: .exe
+            pluginval_zip: pluginval_Windows.zip
+            pluginval: pluginval/pluginval.exe
+            platform: windows
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: juce-framework/JUCE
+          ref: ${{ env.JUCE_SHA }}
+          path: JUCE
+
+      - name: Read version
+        run: |
+          VERSION=$(tr -d '\r' < CMakeLists.txt | sed -nE 's/^project\(Fault VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+          if [ -z "$VERSION" ]; then echo "::error::Couldn't read the version from CMakeLists.txt"; exit 1; fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME doesn't match CMakeLists.txt version $VERSION"; exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      # DSP unit tests: plain C++, no JUCE involved
+      - name: Unit tests
+        run: |
+          cmake -S . -B build-tests ${{ matrix.generator }} -DFAULT_JUCE_PATH="$PWD/JUCE" -DCMAKE_BUILD_TYPE=Release -DFAULT_BUILD_TESTS=ON
+          cmake --build build-tests --config Release --target fault_tests --parallel
+          ctest --test-dir build-tests -C Release --output-on-failure
+
+      - name: Release build
+        run: |
+          cmake -S . -B build-release ${{ matrix.generator }} -DFAULT_JUCE_PATH="$PWD/JUCE" -DCMAKE_BUILD_TYPE=Release -DFAULT_DEV_TABLES=OFF -DFAULT_BUILD_TESTS=OFF
+          TARGETS="Fault_VST3 FaultRender"
+          if [ "$RUNNER_OS" = "macOS" ]; then TARGETS="$TARGETS Fault_AU"; fi
+          cmake --build build-release --config Release --parallel --target $TARGETS
+
+      # The tuning file must already be baked into the source, or release builds ship old tables
+      - name: Macro tables are baked
+        run: |
+          RENDER=$(find build-release/tools/render -type f -name "FaultRender${{ matrix.exe }}" -perm -u+x | head -1)
+          [ -n "$RENDER" ] || RENDER=$(find build-release/tools/render -type f -name "FaultRender${{ matrix.exe }}" | head -1)
+          "$RENDER" --bake-tables tuning/macro_tables.json --bake-out baked.inc > /dev/null
+          diff <(tr -d '\r' < baked.inc) <(tr -d '\r' < source/dsp/MacroTablesBaked.inc) \
+              || { echo "::error::tuning/macro_tables.json has changes that aren't baked in"; exit 1; }
+
+      - name: Check universal binaries and sign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          for b in AU/Fault.component VST3/Fault.vst3; do
+            bundle="build-release/Fault_artefacts/Release/$b"
+            bin=$(find "$bundle/Contents/MacOS" -type f -maxdepth 1 | head -1)
+            lipo "$bin" -verify_arch arm64 x86_64
+            if strings "$bin" | grep -q "macro_tables.json"; then echo "::error::$b still watches the tuning file"; exit 1; fi
+            codesign --force --deep --sign - "$bundle"
+          done
+
+      - name: Download pluginval
+        run: |
+          curl -fsSL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/$PLUGINVAL_VERSION/${{ matrix.pluginval_zip }}"
+          mkdir pluginval && cd pluginval && cmake -E tar xf ../pluginval.zip
+
+      - name: pluginval VST3 (strictness 10)
+        run: |
+          "${{ matrix.pluginval }}" --strictness-level 10 --validate-in-process --skip-gui-tests \
+              --timeout-ms 900000 --validate "build-release/Fault_artefacts/Release/VST3/Fault.vst3"
+
+      - name: auval (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R build-release/Fault_artefacts/Release/AU/Fault.component ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -v aumf Flt1 Lvrs
+
+      - name: Package
+        run: |
+          NAME="Fault-$VERSION-${{ matrix.platform }}"
+          mkdir -p "dist/$NAME"
+          ART=build-release/Fault_artefacts/Release
+          if [ "$RUNNER_OS" = "macOS" ]; then
+              ditto "$ART/AU/Fault.component" "dist/$NAME/Fault.component"
+              ditto "$ART/VST3/Fault.vst3" "dist/$NAME/Fault.vst3"
+              cp docs/RELEASE_README.txt "dist/$NAME/README.txt"
+              (cd dist && ditto -c -k --keepParent "$NAME" "$NAME.zip")
+          else
+              cp -R "$ART/VST3/Fault.vst3" "dist/$NAME/"
+              sed 's/$/\r/' < docs/RELEASE_README.txt > "dist/$NAME/README.txt"
+              (cd dist && cmake -E tar cf "$NAME.zip" --format=zip "$NAME")
+          fi
+          echo "PACKAGE=dist/$NAME.zip" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.PACKAGE }}
+          archive: false
+          if-no-files-found: error

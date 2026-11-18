@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.22)
 # macOS: universal binary; must be set before project(). Ignored elsewhere.
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
+# Windows: link the C++ runtime statically, so users need no Visual C++ Redistributable.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
 project(Fault VERSION 0.9.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
