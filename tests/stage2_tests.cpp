@@ -21,7 +21,7 @@ dsp::EngineParams micro (int step = 0, int repeats = 1)
 double cents (double f, double ref) { return 1200.0 * std::log2 (f / ref); }
 } // namespace
 
-TEST_CASE ("Note pitch plays the buffer chromatically and in tune across ±3 octaves", "[stage2][pitch]")
+TEST_CASE ("Note pitch plays the buffer chromatically and in tune across +/- 3 octaves", "[stage2][pitch]")
 {
     // A steady 440 Hz into an 8 s window; notes C0 .. C6 (MIDI 24 .. 96) every 3 semitones, 0.6 s each,
     // skipping the gate notes C1 .. F1 (36 .. 41), which never set the pitch.
