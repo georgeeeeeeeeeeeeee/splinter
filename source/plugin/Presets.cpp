@@ -12,7 +12,13 @@ const juce::StringArray& PresetManager::categories()
 
 juce::File PresetManager::userFolder()
 {
-    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Fault").getChildFile ("Presets");
+    const auto appData = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory);
+    const auto folder = appData.getChildFile ("Splinter").getChildFile ("Presets");
+    // Splinter was called Fault before release: bring presets saved under the old name across once.
+    const auto old = appData.getChildFile ("Fault").getChildFile ("Presets");
+    if (! folder.exists() && old.isDirectory())
+        old.copyDirectoryTo (folder);
+    return folder;
 }
 
 void PresetManager::rescan()

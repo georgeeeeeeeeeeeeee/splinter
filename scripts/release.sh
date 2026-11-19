@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Mac release candidate: a universal Release build with the Macro tables compiled in (no hot-reload),
-# ad-hoc signed, zipped with the user README. Output: dist/Fault-<version>-mac.zip
+# ad-hoc signed, zipped with the user README. Output: dist/Splinter-<version>-mac.zip
 # Usage: scripts/release.sh            (pluginval on the VST3 too, if ~/Applications/pluginval.app exists)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CMAKE="${CMAKE:-$(command -v /opt/homebrew/bin/cmake || command -v cmake)}"
-VERSION="$(sed -n 's/^project(Fault VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+VERSION="$(sed -n 's/^project(Splinter VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
 B=build-release
 GEN=()
 command -v ninja > /dev/null && GEN=(-G Ninja)
 "$CMAKE" -S . -B "$B" "${GEN[@]}" -DCMAKE_BUILD_TYPE=Release -DFAULT_DEV_TABLES=OFF -DFAULT_BUILD_TESTS=OFF > /dev/null
-"$CMAKE" --build "$B" --config Release --target Fault_AU Fault_VST3 FaultRender
+"$CMAKE" --build "$B" --config Release --target Splinter_AU Splinter_VST3 FaultRender
 
 # The tuning file must already be baked in: a release never reads tuning/macro_tables.json.
 TMP="$(mktemp -d)"
@@ -22,11 +22,11 @@ if ! diff -q "$TMP/baked.inc" source/dsp/MacroTablesBaked.inc > /dev/null; then
   exit 1
 fi
 
-ART="$B/Fault_artefacts/Release"
-OUT="dist/Fault-$VERSION-mac"
+ART="$B/Splinter_artefacts/Release"
+OUT="dist/Splinter-$VERSION-mac"
 rm -rf "$OUT" "$OUT.zip"
 mkdir -p "$OUT"
-for b in AU/Fault.component VST3/Fault.vst3; do
+for b in AU/Splinter.component VST3/Splinter.vst3; do
   cp -R "$ART/$b" "$OUT/"
   bundle="$OUT/$(basename "$b")"
   bin="$(find "$bundle/Contents/MacOS" -type f -maxdepth 1 | head -1)"
@@ -39,8 +39,8 @@ done
 cp docs/RELEASE_README.txt "$OUT/README.txt"
 PV="$HOME/Applications/pluginval.app/Contents/MacOS/pluginval"
 if [ -x "$PV" ]; then
-  "$PV" --strictness-level 8 --validate-in-process --validate "$OUT/Fault.vst3" > "$TMP/pluginval.txt" 2>&1 \
+  "$PV" --strictness-level 8 --validate-in-process --validate "$OUT/Splinter.vst3" > "$TMP/pluginval.txt" 2>&1 \
     && echo "pluginval (strictness 8): VST3 passed" || { tail -30 "$TMP/pluginval.txt"; echo "pluginval failed"; exit 1; }
 fi
-(cd dist && ditto -c -k --keepParent "Fault-$VERSION-mac" "Fault-$VERSION-mac.zip")
-echo "wrote dist/Fault-$VERSION-mac.zip"
+(cd dist && ditto -c -k --keepParent "Splinter-$VERSION-mac" "Splinter-$VERSION-mac.zip")
+echo "wrote dist/Splinter-$VERSION-mac.zip"

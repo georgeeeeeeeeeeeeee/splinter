@@ -1,4 +1,4 @@
-"""Writes presets/<Category>/*.json, Fault's factory presets (compiled into the plug-in). Values are each
+"""Writes presets/<Category>/*.json, Splinter's factory presets (compiled into the plug-in). Values are each
 parameter's own units (choices by name). Macro knob positions are given as (zone, position in zone) and
 resolved against tuning/macro_tables.json, so re-run this after moving zone boundaries."""
 import json

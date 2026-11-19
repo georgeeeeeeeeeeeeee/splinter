@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  # The JUCE commit Fault is developed against (~/JUCE on George's Mac, November 2026).
+  # The JUCE commit Splinter is developed against (~/JUCE on George's Mac, November 2026).
   JUCE_SHA: 501c07674e1ad693085a7e7c398f205c2677f5da
   PLUGINVAL_VERSION: v1.0.4
 
@@ -57,7 +57,7 @@ jobs:
 
       - name: Read version
         run: |
-          VERSION=$(tr -d '\r' < CMakeLists.txt | sed -nE 's/^project\(Fault VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+          VERSION=$(tr -d '\r' < CMakeLists.txt | sed -nE 's/^project\(Splinter VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
           if [ -z "$VERSION" ]; then echo "::error::Couldn't read the version from CMakeLists.txt"; exit 1; fi
           if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
               echo "::error::Tag $GITHUB_REF_NAME doesn't match CMakeLists.txt version $VERSION"; exit 1
@@ -74,8 +74,8 @@ jobs:
       - name: Release build
         run: |
           cmake -S . -B build-release ${{ matrix.generator }} -DFAULT_JUCE_PATH="$PWD/JUCE" -DCMAKE_BUILD_TYPE=Release -DFAULT_DEV_TABLES=OFF -DFAULT_BUILD_TESTS=OFF
-          TARGETS="Fault_VST3 FaultRender"
-          if [ "$RUNNER_OS" = "macOS" ]; then TARGETS="$TARGETS Fault_AU"; fi
+          TARGETS="Splinter_VST3 FaultRender"
+          if [ "$RUNNER_OS" = "macOS" ]; then TARGETS="$TARGETS Splinter_AU"; fi
           cmake --build build-release --config Release --parallel --target $TARGETS
 
       # The tuning file must already be baked into the source, or release builds ship old tables
@@ -90,8 +90,8 @@ jobs:
       - name: Check universal binaries and sign (macOS)
         if: runner.os == 'macOS'
         run: |
-          for b in AU/Fault.component VST3/Fault.vst3; do
-            bundle="build-release/Fault_artefacts/Release/$b"
+          for b in AU/Splinter.component VST3/Splinter.vst3; do
+            bundle="build-release/Splinter_artefacts/Release/$b"
             bin=$(find "$bundle/Contents/MacOS" -type f -maxdepth 1 | head -1)
             lipo "$bin" -verify_arch arm64 x86_64
             if strings "$bin" | grep -q "macro_tables.json"; then echo "::error::$b still watches the tuning file"; exit 1; fi
@@ -106,28 +106,28 @@ jobs:
       - name: pluginval VST3 (strictness 10)
         run: |
           "${{ matrix.pluginval }}" --strictness-level 10 --validate-in-process --skip-gui-tests \
-              --timeout-ms 900000 --validate "build-release/Fault_artefacts/Release/VST3/Fault.vst3"
+              --timeout-ms 900000 --validate "build-release/Splinter_artefacts/Release/VST3/Splinter.vst3"
 
       - name: auval (macOS)
         if: runner.os == 'macOS'
         run: |
           mkdir -p ~/Library/Audio/Plug-Ins/Components
-          cp -R build-release/Fault_artefacts/Release/AU/Fault.component ~/Library/Audio/Plug-Ins/Components/
+          cp -R build-release/Splinter_artefacts/Release/AU/Splinter.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar 2>/dev/null || true
           auval -v aumf Flt1 Lvrs
 
       - name: Package
         run: |
-          NAME="Fault-$VERSION-${{ matrix.platform }}"
+          NAME="Splinter-$VERSION-${{ matrix.platform }}"
           mkdir -p "dist/$NAME"
-          ART=build-release/Fault_artefacts/Release
+          ART=build-release/Splinter_artefacts/Release
           if [ "$RUNNER_OS" = "macOS" ]; then
-              ditto "$ART/AU/Fault.component" "dist/$NAME/Fault.component"
-              ditto "$ART/VST3/Fault.vst3" "dist/$NAME/Fault.vst3"
+              ditto "$ART/AU/Splinter.component" "dist/$NAME/Splinter.component"
+              ditto "$ART/VST3/Splinter.vst3" "dist/$NAME/Splinter.vst3"
               cp docs/RELEASE_README.txt "dist/$NAME/README.txt"
               (cd dist && ditto -c -k --keepParent "$NAME" "$NAME.zip")
           else
-              cp -R "$ART/VST3/Fault.vst3" "dist/$NAME/"
+              cp -R "$ART/VST3/Splinter.vst3" "dist/$NAME/"
               sed 's/$/\r/' < docs/RELEASE_README.txt > "dist/$NAME/README.txt"
               (cd dist && cmake -E tar cf "$NAME.zip" --format=zip "$NAME")
           fi

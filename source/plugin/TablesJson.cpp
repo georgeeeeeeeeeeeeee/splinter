@@ -76,7 +76,7 @@ juce::String tablesToJson (const dsp::MacroTables& t)
 {
     int count = 0;
     const auto* fields = dsp::MacroTables::fields (count);
-    juce::String s ("{\n  \"_about\": \"Fault Macro mode tuning. Dev builds of the plug-in reload this file when it's saved; "
+    juce::String s ("{\n  \"_about\": \"Splinter Macro mode tuning. Dev builds of the plug-in reload this file when it's saved; "
                     "fault-render reads it too. Each key's meaning is in _notes.\",\n");
     s << "  \"_notes\": {\n";
     for (int i = 0; i < count; ++i)

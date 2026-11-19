@@ -12,7 +12,7 @@ build/tests/fault_tests | tail -1
 "$H" --cpu --seconds 10 | tee build/stage7/cpu.txt
 PV="$HOME/Applications/pluginval.app/Contents/MacOS/pluginval"
 if [ -x "$PV" ]; then
-  for b in ~/Library/Audio/Plug-Ins/VST3/Fault.vst3 ~/Library/Audio/Plug-Ins/Components/Fault.component; do
+  for b in ~/Library/Audio/Plug-Ins/VST3/Splinter.vst3 ~/Library/Audio/Plug-Ins/Components/Splinter.component; do
     "$PV" --strictness-level 8 --validate-in-process --validate "$b" > "build/stage7/pluginval-$(basename "$b").txt" 2>&1 \
       && echo "pluginval 8: $(basename "$b") passed" || { echo "pluginval 8: $(basename "$b") FAILED (build/stage7/)"; exit 1; }
   done

@@ -307,7 +307,7 @@ int writeFixture (const juce::File& f)
     const auto mb = stateOf (p);
     auto state = juce::AudioProcessor::getXmlFromBinary (mb.getData(), (int) mb.getSize());
     juce::XmlElement doc ("FaultStateFixture");
-    doc.setAttribute ("note", "Saved by Fault " JucePlugin_VersionString "; never edit. <expect> is what it must load as.");
+    doc.setAttribute ("note", "Saved by Splinter " JucePlugin_VersionString "; never edit. <expect> is what it must load as.");
     doc.addChildElement (new juce::XmlElement (*state));
     doc.createNewChildElement ("expect")->addTextElement ("\n" + describe (p));
     f.getParentDirectory().createDirectory();

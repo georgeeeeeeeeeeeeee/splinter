@@ -6,7 +6,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 # Windows: link the C++ runtime statically, so users need no Visual C++ Redistributable.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
-project(Fault VERSION 0.9.0 LANGUAGES C CXX)
+project(Splinter VERSION 0.9.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -31,7 +31,7 @@ set(FAULT_FORMATS VST3 Standalone)
 if(APPLE)
     list(APPEND FAULT_FORMATS AU)
 endif()
-juce_add_plugin(Fault
+juce_add_plugin(Splinter
     COMPANY_NAME            "${FAULT_COMPANY}"
     PLUGIN_MANUFACTURER_CODE ${FAULT_MANUFACTURER_CODE}
     PLUGIN_CODE             ${FAULT_PLUGIN_CODE}
@@ -71,7 +71,7 @@ if(FAULT_DEV_TABLES)
     target_compile_definitions(fault_plugin_code INTERFACE FAULT_TABLES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tuning/macro_tables.json")
 endif()
 
-target_link_libraries(Fault PRIVATE fault_plugin_code PUBLIC
+target_link_libraries(Splinter PRIVATE fault_plugin_code PUBLIC
     juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 
 # ---- Tools + tests ----------------------------------------------------------

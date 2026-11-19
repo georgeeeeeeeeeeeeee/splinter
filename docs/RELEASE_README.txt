@@ -1,7 +1,7 @@
 FAULT (working title), release candidate
 =========================================
 
-A circuit-bent buffer effect. Fault keeps recording the last minute or so of whatever you feed it.
+A circuit-bent buffer effect. Splinter keeps recording the last minute or so of whatever you feed it.
 On every clock tick it plays a window of that recording back, broken: stutters, reverse, varispeed,
 tape stops, skips and dropouts, then bitcrushing, saturation, filtering and vinyl wear on top.
 
@@ -11,12 +11,12 @@ These builds aren't signed with a developer certificate, so each system needs on
 
 INSTALL: MAC
 ------------
-1. Copy Fault.component to   ~/Library/Audio/Plug-Ins/Components/
-   Copy Fault.vst3      to   ~/Library/Audio/Plug-Ins/VST3/
+1. Copy Splinter.component to   ~/Library/Audio/Plug-Ins/Components/
+   Copy Splinter.vst3      to   ~/Library/Audio/Plug-Ins/VST3/
    (In Finder: Go > Go to Folder..., then paste the path.)
 2. Open Terminal and clear the download quarantine:
-     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/Fault.component
-     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Fault.vst3
+     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/Splinter.component
+     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Splinter.vst3
 3. In your DAW, rescan plug-ins. In Live: Settings > Plug-Ins, turn on the AU and VST3 system
    folders, then Rescan.
 
@@ -24,7 +24,7 @@ If macOS says the plug-in "is damaged" or "can't be opened", step 2 was missed.
 
 INSTALL: WINDOWS
 ----------------
-1. Copy the Fault.vst3 folder to   C:\Program Files\Common Files\VST3\
+1. Copy the Splinter.vst3 folder to   C:\Program Files\Common Files\VST3\
 2. In your DAW, rescan plug-ins. In Live: Options > Preferences > Plug-Ins, turn on the VST3 system
    folder, then Rescan.
 
@@ -34,7 +34,7 @@ the file's Properties).
 
 GETTING STARTED
 ---------------
-Put Fault on an audio track and play something into it. Pick a preset from the browser at the top
+Put Splinter on an audio track and play something into it. Pick a preset from the browser at the top
 (the < and > buttons step through them), or start from Init:
 
   Time       how long each window is. With Clock = Host it's a note length; Internal is free time.
@@ -65,8 +65,8 @@ on the knob shows where modulation has moved it.
 
 MIDI
 ----
-Send MIDI to Fault's track to control it with notes. In Live, set a MIDI track's "MIDI To" to the
-Fault track.
+Send MIDI to Splinter's track to control it with notes. In Live, set a MIDI track's "MIDI To" to the
+Splinter track.
 
   C1 Freeze   C#1 Bend   D1 Break   D#1 Corrupt (next type)   E1 Reset   F1 Note clock
   (Live's numbering, where C3 = 60.) Each note is learnable in the Settings drawer.
@@ -80,8 +80,8 @@ PRESETS
 -------
 There are 30 factory presets in Tape, Skip, Stutter, Ghost, Ruin and Ambient. Save stores your own
 in the User section:
-  Mac:      ~/Library/Application Support/Fault/Presets
-  Windows:  %APPDATA%\Fault\Presets
+  Mac:      ~/Library/Application Support/Splinter/Presets
+  Windows:  %APPDATA%\Splinter\Presets
 
 
 GOOD TO KNOW
@@ -90,6 +90,6 @@ GOOD TO KNOW
 - Output clip (Settings, on by default) keeps the output at or below 0 dBFS. Below -1 dBFS it does
   nothing; above that it rounds peaks off. "Clip" lights in the buffer view when it acts. Some
   combinations are loud (resonant DJ Filter, Vinyl and Width at 100% on a hot input), so leave it
-  on unless a limiter follows Fault.
-- Fault's controls are host-automatable. Saved sessions recall every knob, the learnt CC numbers
+  on unless a limiter follows Splinter.
+- Splinter's controls are host-automatable. Saved sessions recall every knob, the learnt CC numbers
   and gate notes, and the preset name.

@@ -1,5 +1,5 @@
 #pragma once
-// Fault's visual identity: a dark instrument-panel ground with one signal colour per function
+// Splinter's visual identity: a dark instrument-panel ground with one signal colour per function
 // (buffer teal, Bend amber, Break violet, Corrupt red, modulation lime). Original; not modelled on any
 // hardware panel.
 

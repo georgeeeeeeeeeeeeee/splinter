@@ -1,6 +1,6 @@
 """Writes tools/render/stage5/*.json (the Stage 5 renders, committed so the PowerShell runner needs no
 Python) and tools/live/fault-stage5-gates.mid, a 4-bar MIDI clip for Live with the same gates and CCs as
-the drums-gates-clip render: drop it on a MIDI track whose MIDI To is the track holding Fault.
+the drums-gates-clip render: drop it on a MIDI track whose MIDI To is the track holding Splinter.
 
 Gate notes are Live's numbering (C3 = 60): Freeze C1, Bend C#1, Break D1, Corrupt D#1, Reset E1, Note clock F1."""
 import json
@@ -100,7 +100,7 @@ def vlq(n):
     return bytes(out)
 track = bytearray()
 track += vlq(0) + b"\xff\x51\x03" + int(60_000_000 / BPM).to_bytes(3, "big")   # tempo
-track += vlq(0) + b"\xff\x03" + bytes([len(b"Fault gates")]) + b"Fault gates"
+track += vlq(0) + b"\xff\x03" + bytes([len(b"Splinter gates")]) + b"Splinter gates"
 last = 0
 for at, kind, num, val, on in clip:
     tick = int(round(at * TPB))

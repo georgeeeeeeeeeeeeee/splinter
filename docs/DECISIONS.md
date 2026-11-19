@@ -7,7 +7,7 @@ JUCE 8.0.12 (the checkout at `~/JUCE`), CMake ≥ 3.22, C++20. Mac builds are un
 AU (Mac only), VST3 and Standalone. An audio effect that accepts MIDI: `NEEDS_MIDI_INPUT`, not a synth, not a MIDI effect. AU main type `kAudioUnitType_MusicEffect` (`aumf`), which hosts require for an effect that takes MIDI. Stereo in and out, mono in to stereo out allowed. Zero latency.
 
 ## D3 — Identity is provisional
-Company and manufacturer code "Lvrs" (the placeholder George accepted for Refract), plugin code `Flt1`, bundle ID `com.lvrs.fault`, product name "Fault" (working title). All in `cmake/PluginIds.cmake`. They must be fixed before the first release, since hosts store them in saved sets.
+Final (19 Nov 2026): product name **Splinter** (George; "Fault" was taken by Unfiltered Audio), company "LeverStudios" with manufacturer code "Lvrs" (as LFO Sequencer), plugin code `Splt`, bundle ID `com.leverstudios.splinter`. All in `cmake/PluginIds.cmake`. They must not change after the first release, since hosts store them in saved sets. Internal names (the `fault` C++ namespace, `FAULT_` CMake options, the dev tools `fault-render` etc., the `FaultState` XML tag) keep the old working title: invisible to users, and renaming them would only churn.
 
 ## D4 — The reference manual stays out of the repo
 `.gitignore` excludes `manuals/` and `*.pdf`. The Data Bender manual is a behavioural reference only: no text, names, artwork or colours from it go into code, UI or docs.
@@ -17,7 +17,7 @@ Company and manufacturer code "Lvrs" (the placeholder George accepted for Refrac
 
 ## D6 — George's Stage 0 answers (13 Nov 2026)
 Live Lite is the only test host. Unanswered questions are left at their defaults until George says otherwise:
-- name: "Fault" (working title)
+- name: "Splinter" (was the working title "Fault")
 - repo: `~/claude/fault` on this Mac
 - Cycles: CC lanes stay generic and learnable (no Cycles-specific defaults)
 - WASM: kept possible (no JUCE in `/dsp`, plus a C API in `Engine.h`)
@@ -77,7 +77,7 @@ A console tool that links the plug-in code. It renders each preset through `Faul
 - A value that isn't a finite number takes the parameter's default. Numbers are clamped and snapped to the parameter's range.
 - A CC-number or gate-note list that's missing or short fills from the defaults, and entries are clamped to 0–127.
 - Foreign, truncated or random data changes nothing.
-- After loading, any parameter whose value still differs from the saved one is set directly. APVTS skips a parameter whose snapped value already matches, so a bool at a raw 0.31 would otherwise stay at 0.31, and pluginval and hosts would see it unrestored. Refract had the same fault and failed pluginval's VST3 state test on some seeds. Fault passed only by luck until `--state` checked it.
+- After loading, any parameter whose value still differs from the saved one is set directly. APVTS skips a parameter whose snapped value already matches, so a bool at a raw 0.31 would otherwise stay at 0.31, and pluginval and hosts would see it unrestored. Refract had the same fault and failed pluginval's VST3 state test on some seeds. Splinter passed only by luck until `--state` checked it.
 
 `tests/state/v6.xml` is a seeded, non-default state saved by this version, together with the exact values it must load as. Every later version adds its own fixture (`fault-harden --write-fixture tests/state/v<N>.xml`) and must still load all the earlier ones (`fault-harden --state`). Parameter IDs are never renamed. A change of meaning bumps `kStateVersion` and converts in `setStateInformation`.
 

@@ -1,5 +1,5 @@
 #pragma once
-// Fault's engine: owns the buffer, clock, playheads and output stage, and processes a block.
+// Splinter's engine: owns the buffer, clock, playheads and output stage, and processes a block.
 // Pure C++ (no JUCE), plus a small C API at the bottom for the WASM route.
 //
 // Per sample: write the input into the RecordBuffer (unless frozen) -> clock ticks capture a new window

@@ -174,11 +174,11 @@ void FaultEditor::Content::paint (juce::Graphics& g)
 {
     g.fillAll (colours::bg);
     // The wordmark: drawn, then a band of it re-drawn sideways, like a buffer skipping.
-    const juce::Rectangle<int> mark (20, 8, 150, 32);
+    const juce::Rectangle<int> mark (20, 8, 122, 32);
     const auto word = [&] (juce::Colour c, int dx) {
         g.setColour (c);
-        g.setFont (juce::FontOptions (27.0f, juce::Font::bold).withKerningFactor (0.18f));
-        g.drawText ("FAULT", mark.translated (dx, 0), juce::Justification::centredLeft, false);
+        g.setFont (juce::FontOptions (22.0f, juce::Font::bold).withKerningFactor (0.12f));
+        g.drawText ("SPLINTER", mark.translated (dx, 0), juce::Justification::centredLeft, false);
     };
     word (colours::corrupt.withAlpha (0.55f), -2);
     word (colours::buffer.withAlpha (0.55f), 2);
@@ -190,7 +190,7 @@ void FaultEditor::Content::paint (juce::Graphics& g)
         g.fillRect (mark);
         word (colours::text, 6);
     }
-    drawCaption (g, "glitch buffer", { 152, 16, 120, 16 }, colours::faint);
+    drawCaption (g, "glitch buffer", { 146, 16, 96, 16 }, colours::faint);
     g.setColour (colours::line);
     g.drawHorizontalLine (46, 16.0f, 884.0f);
     drawCaption (g, "Preset", { 248, 16, 50, 16 }, colours::faint);

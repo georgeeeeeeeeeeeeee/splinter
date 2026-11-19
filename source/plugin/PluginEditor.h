@@ -1,5 +1,5 @@
 #pragma once
-// Fault's editor (Stage 6): fixed-ratio and resizable, laid out at 900 x 560 and scaled. The buffer view
+// Splinter's editor (Stage 6): fixed-ratio and resizable, laid out at 900 x 560 and scaled. The buffer view
 // sits in the centre between the time knobs (Time, Repeats, Mix) and the damage knobs (Bend, Break,
 // Corrupt); the transport row is underneath. The mod and settings drawers slide over the centre, leaving
 // the knobs free as drop targets. Reads the engine only through atomics, at 60 fps.

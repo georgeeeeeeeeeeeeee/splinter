@@ -1,5 +1,5 @@
 {
-  "_about": "Fault Macro mode tuning. Dev builds of the plug-in reload this file when it's saved; fault-render reads it too. Each key's meaning is in _notes.",
+  "_about": "Splinter Macro mode tuning. Dev builds of the plug-in reload this file when it's saved; fault-render reads it too. Each key's meaning is in _notes.",
   "_notes": {
     "bendZoneStart": "Bend: knob position (0-1) where each of the 7 zones begins. Zones: off, reverse, octave, two octaves, slew, tape stop, everything.",
     "bendChanceLow": "Bend: chance per tick that something happens, at the start of each zone.",

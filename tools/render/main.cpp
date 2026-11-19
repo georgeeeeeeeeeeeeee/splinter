@@ -1,4 +1,4 @@
-// fault-render: runs a WAV through Fault's DSP engine.
+// fault-render: runs a WAV through Splinter's DSP engine.
 //
 //   fault-render --in in.wav --out out.wav [--params p.json] [--png out.png] [--ticks ticks.csv]
 //

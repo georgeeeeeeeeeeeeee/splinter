@@ -8,8 +8,8 @@ GEN=()
 command -v ninja > /dev/null && GEN=(-G Ninja)
 "$CMAKE" -S . -B build "${GEN[@]}" -DCMAKE_BUILD_TYPE="$CONFIG" > /dev/null
 "$CMAKE" --build build --config "$CONFIG"
-ART="build/Fault_artefacts/$CONFIG"
-for b in "$ART/AU/Fault.component" "$ART/VST3/Fault.vst3" "$ART/Standalone/Fault.app"; do
+ART="build/Splinter_artefacts/$CONFIG"
+for b in "$ART/AU/Splinter.component" "$ART/VST3/Splinter.vst3" "$ART/Standalone/Splinter.app"; do
   [ -d "$b" ] || continue
   bin="$(find "$b/Contents/MacOS" -type f -maxdepth 1 | head -1)"
   echo "$(basename "$b"): $(lipo -archs "$bin")"

@@ -11,6 +11,6 @@ New-Item -ItemType Directory -Force build\stage7 | Out-Null
 & $H --fuzz --minutes $Minutes --seed 20261114 | Tee-Object build\stage7\fuzz.txt; if ($LASTEXITCODE -ne 0) { throw "fuzz failed" }
 & $H --cpu --seconds 10 | Tee-Object build\stage7\cpu.txt
 if ($Pluginval -ne "") {
-    & $Pluginval --strictness-level 8 --validate-in-process --validate "C:\Program Files\Common Files\VST3\Fault.vst3"
+    & $Pluginval --strictness-level 8 --validate-in-process --validate "C:\Program Files\Common Files\VST3\Splinter.vst3"
     if ($LASTEXITCODE -ne 0) { throw "pluginval failed" }
 }
