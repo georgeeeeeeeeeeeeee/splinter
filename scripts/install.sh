@@ -17,4 +17,4 @@ install_bundle() {
 install_bundle "$ART/AU/Splinter.component" "$HOME/Library/Audio/Plug-Ins/Components"
 install_bundle "$ART/VST3/Splinter.vst3" "$HOME/Library/Audio/Plug-Ins/VST3"
 killall -9 AudioComponentRegistrar 2>/dev/null || true
-echo "done. Validate the AU with: auval -v aumf Flt1 Lvrs"
+echo "done. Validate the AU with: auval -v aumf Splt Lvrs"

@@ -114,7 +114,7 @@ jobs:
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R build-release/Splinter_artefacts/Release/AU/Splinter.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar 2>/dev/null || true
-          auval -v aumf Flt1 Lvrs
+          auval -v aumf Splt Lvrs
 
       - name: Package
         run: |

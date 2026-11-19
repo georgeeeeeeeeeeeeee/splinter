@@ -109,7 +109,7 @@ Mac (universal binary; CMake, Ninja optional, JUCE 8 at `~/JUCE` or `-DFAULT_JUC
 ```
 scripts/build.sh            # AU + VST3 + Standalone
 scripts/install.sh          # copy to ~/Library/Audio/Plug-Ins, ad-hoc sign, clear quarantine
-auval -v aumf Flt1 Lvrs
+auval -v aumf Splt Lvrs
 ```
 
 Windows (PowerShell; Visual Studio 2022, CMake, JUCE 8 at `C:\JUCE` or `-Juce`):

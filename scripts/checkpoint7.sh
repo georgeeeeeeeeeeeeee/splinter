@@ -17,4 +17,4 @@ if [ -x "$PV" ]; then
       && echo "pluginval 8: $(basename "$b") passed" || { echo "pluginval 8: $(basename "$b") FAILED (build/stage7/)"; exit 1; }
   done
 fi
-auval -v aumf Flt1 Lvrs > build/stage7/auval.txt 2>&1 && echo "auval: passed" || { echo "auval FAILED (build/stage7/auval.txt)"; exit 1; }
+auval -v aumf Splt Lvrs > build/stage7/auval.txt 2>&1 && echo "auval: passed" || { echo "auval FAILED (build/stage7/auval.txt)"; exit 1; }
