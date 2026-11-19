@@ -1,0 +1,14 @@
+{
+ "name": "Dusty Record",
+ "category": "Lo-Fi",
+ "about": "Crackle, hiss and a narrower top end, with a slow wow.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "corruptType": "Vinyl",
+  "corrupt": 0.4,
+  "output": -0.5
+ }
+}

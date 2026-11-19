@@ -1,0 +1,14 @@
+{
+ "name": "Old Sampler",
+ "category": "Lo-Fi",
+ "about": "Six bits: crunchy, gritty tails and a hard edge on the hits.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "corruptType": "Decimate",
+  "corrupt": 0.45,
+  "output": -0.5
+ }
+}

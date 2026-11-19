@@ -11,6 +11,7 @@
   "breakOnMacro": true,
   "break": 0.53,
   "corruptType": "DJ Filter",
-  "corrupt": 0.7
+  "corrupt": 0.7,
+  "output": -1.5
  }
 }

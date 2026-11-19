@@ -1,0 +1,17 @@
+{
+ "name": "Hold to Glitch",
+ "category": "Perform",
+ "about": "Dry until you play. Hold C1 to repeat the last beat; add C#1 for tape stops, D1 to break it up.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 2,
+  "mix": 0,
+  "gateMode": "Momentary",
+  "freezeButtonMode": "Momentary",
+  "mode": "Macro",
+  "bend": 0.786,
+  "break": 0.47,
+  "output": -0.5
+ }
+}

@@ -19,6 +19,7 @@
   "mod1Phase": 0.0,
   "route1Source": "Mod 1",
   "route1Dest": "Break",
-  "route1Depth": 100
+  "route1Depth": 100,
+  "output": 0.5
  }
 }

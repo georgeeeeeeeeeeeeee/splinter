@@ -1,0 +1,14 @@
+{
+ "name": "Old Radio",
+ "category": "Lo-Fi",
+ "about": "Thin, crackly and wobbling, as if from another room.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "corruptType": "Vinyl",
+  "corrupt": 0.9,
+  "output": 0.5
+ }
+}

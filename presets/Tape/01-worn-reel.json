@@ -11,6 +11,7 @@
   "bendOnMacro": true,
   "bend": 0.701,
   "corruptType": "Vinyl",
-  "corrupt": 0.3
+  "corrupt": 0.3,
+  "output": -0.5
  }
 }

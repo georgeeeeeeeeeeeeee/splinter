@@ -6,7 +6,7 @@ namespace fault
 {
 const juce::StringArray& PresetManager::categories()
 {
-    static const juce::StringArray c { "Tape", "Skip", "Stutter", "Ghost", "Ruin", "Ambient", "User" };
+    static const juce::StringArray c { "Repeat", "Stutter", "Skip", "Gate", "Tape", "Pitch", "Lo-Fi", "Texture", "Ruin", "Perform", "User" };
     return c;
 }
 

@@ -1,0 +1,14 @@
+{
+ "name": "Warm Crunch",
+ "category": "Lo-Fi",
+ "about": "Saturation, from warm to crunchy as it gets louder. Level-matched, so it doesn't just get louder.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "corruptType": "Destroy",
+  "corrupt": 0.32,
+  "output": 0.5
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "name": "Wheel Stutter",
+ "category": "Perform",
+ "about": "Mod wheel down: dry. Push it up for stutters that get faster and denser.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.875,
+  "repeats": 1,
+  "mix": 0,
+  "cc1Polarity": "Unipolar",
+  "route1Source": "CC 1",
+  "route1Dest": "Mix",
+  "route1Depth": 100,
+  "route2Source": "CC 1",
+  "route2Dest": "Repeats",
+  "route2Depth": 85,
+  "output": -2.0
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "name": "Beat Repeat",
+ "category": "Repeat",
+ "about": "Each beat replays its first half twice; now and then it halves again.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 2,
+  "mix": 100,
+  "windowing": 4,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.11
+ }
+}

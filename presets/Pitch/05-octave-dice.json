@@ -1,0 +1,14 @@
+{
+ "name": "Octave Dice",
+ "category": "Pitch",
+ "about": "Random jumps of one and two octaves, up and down, on the beat.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.455
+ }
+}

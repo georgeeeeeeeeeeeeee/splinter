@@ -1,0 +1,28 @@
+{
+ "name": "Meltdown",
+ "category": "Ruin",
+ "about": "Folded, clipped and pitched about; the louder you play, the further it goes.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "bendOnMacro": true,
+  "bend": 0.44,
+  "breakOnMacro": true,
+  "break": 0.545,
+  "corruptType": "Destroy",
+  "corrupt": 0.55,
+  "envAttack": 2,
+  "envRelease": 250,
+  "envGain": 6,
+  "route1Source": "Env",
+  "route1Dest": "Corrupt",
+  "route1Depth": 45,
+  "route2Source": "Env",
+  "route2Dest": "Break",
+  "route2Depth": 40,
+  "output": -1.0
+ }
+}

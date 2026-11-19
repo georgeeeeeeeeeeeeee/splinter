@@ -9,6 +9,7 @@
   "mix": 100,
   "mode": "Macro",
   "breakOnMacro": true,
-  "break": 0.4925
+  "break": 0.4925,
+  "output": -0.5
  }
 }

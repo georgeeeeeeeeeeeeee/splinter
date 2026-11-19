@@ -11,6 +11,7 @@
   "breakOnMacro": true,
   "break": 0.56,
   "corruptType": "Destroy",
-  "corrupt": 0.35
+  "corrupt": 0.35,
+  "output": -2.5
  }
 }

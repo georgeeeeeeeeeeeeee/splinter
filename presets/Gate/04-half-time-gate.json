@@ -1,0 +1,25 @@
+{
+ "name": "Half-Time Gate",
+ "category": "Gate",
+ "about": "Long and short cuts alternating every bar, for a half-time lurch.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 2,
+  "mix": 100,
+  "windowing": 5,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": true,
+  "break": 0.4,
+  "mod1Shape": "Square",
+  "mod1Sync": "1 bar",
+  "mod1Rate": 1.0,
+  "mod1Polarity": "Bipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Break",
+  "route1Depth": 35
+ }
+}

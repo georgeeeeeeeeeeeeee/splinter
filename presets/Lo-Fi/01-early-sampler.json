@@ -1,0 +1,14 @@
+{
+ "name": "Early Sampler",
+ "category": "Lo-Fi",
+ "about": "Down to 11 kHz: a dull top and a metallic edge of aliasing, like an early sampler.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "corruptType": "Decimate",
+  "corrupt": 0.21,
+  "output": 0.5
+ }
+}

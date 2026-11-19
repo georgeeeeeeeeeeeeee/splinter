@@ -1,0 +1,21 @@
+{
+ "name": "Snare Build",
+ "category": "Stutter",
+ "about": "A riser: repeats accelerate across every bar, from one to a blur. Automate Mix to bring it in.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 100,
+  "windowing": 5,
+  "mod1Shape": "Saw",
+  "mod1Sync": "1 bar",
+  "mod1Rate": 1.0,
+  "mod1Polarity": "Unipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Repeats",
+  "route1Depth": 100,
+  "output": -2.5
+ }
+}

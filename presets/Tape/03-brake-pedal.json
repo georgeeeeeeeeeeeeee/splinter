@@ -1,7 +1,7 @@
 {
  "name": "Brake Pedal",
  "category": "Tape",
- "about": "Most bars, the tape winds down to a standstill and restarts on the next.",
+ "about": "Most half bars, the tape winds down to a standstill and restarts on the next.",
  "params": {
   "clockSource": "Host",
   "time": 0.375,
@@ -9,6 +9,7 @@
   "mix": 100,
   "mode": "Macro",
   "bendOnMacro": true,
-  "bend": 0.803
+  "bend": 0.803,
+  "output": -0.5
  }
 }

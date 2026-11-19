@@ -1,6 +1,6 @@
 {
  "name": "Under Water",
- "category": "Ghost",
+ "category": "Texture",
  "about": "Gliding, muffled repeats behind a low-pass.",
  "params": {
   "clockSource": "Host",
@@ -13,6 +13,7 @@
   "bendOnMacro": true,
   "bend": 0.545,
   "corruptType": "DJ Filter",
-  "corrupt": 0.22
+  "corrupt": 0.22,
+  "output": -0.5
  }
 }

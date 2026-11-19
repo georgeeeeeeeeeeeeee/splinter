@@ -14,6 +14,7 @@
   "mod1Phase": 0.0,
   "route1Source": "Mod 1",
   "route1Dest": "Repeats",
-  "route1Depth": 50
+  "route1Depth": 50,
+  "output": -2.0
  }
 }

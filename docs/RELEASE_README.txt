@@ -78,8 +78,9 @@ lanes, and these are learnable too.
 
 PRESETS
 -------
-There are 30 factory presets in Tape, Skip, Stutter, Ghost, Ruin and Ambient. Save stores your own
-in the User section:
+There are 60 factory presets in ten categories: Repeat, Stutter, Skip, Gate, Tape, Pitch, Lo-Fi,
+Texture, Ruin and Perform (the Perform ones are for playing: the mod wheel, notes C1 to F1, or playing
+harder; each says what to do). They're level-matched. Save stores your own in the User section:
   Mac:      ~/Library/Application Support/Splinter/Presets
   Windows:  %APPDATA%\Splinter\Presets
 

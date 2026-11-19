@@ -1,6 +1,8 @@
 #pragma once
 // Destroy (brief §3.8). First half of the knob: soft saturation, tanh with drive rising to +30 dB.
 // Second half: the curve hardens into clipping (drive on to +42 dB) while a sine wavefolder blends in.
+// A 10 Hz DC blocker follows the shaper: saturating an asymmetric signal (a voice, a bass) shifts its
+// mean, up to about -24 dBFS of DC at full drive, as a fuzz pedal without its output capacitor would.
 // Level safety, both always on:
 //   - compensation: a slow RMS match (150 ms; 6 ms for the first 40 ms after it starts) of the output to
 //     the input, linked across channels and only ever turning down, so turning it up doesn't get
@@ -25,6 +27,7 @@ public:
         fastCoef_ = 1.0 - std::exp (-1.0 / (0.006 * sampleRate));
         warmLen_ = (int) (0.04 * sampleRate);
         relCoef_ = std::exp (-1.0 / (0.08 * sampleRate));
+        dcR_ = 1.0 - 2.0 * std::numbers::pi * 10.0 / sampleRate;
     }
     void reset() noexcept
     {
@@ -32,6 +35,7 @@ public:
         comp_ = 1.0;
         env_ = 0.0;
         warm_ = warmLen_;
+        dcXl_ = dcXr_ = dcYl_ = dcYr_ = 0.0;
     }
 
     // The waveshaper alone, for knob position a (0..1). Identity at 0.
@@ -54,7 +58,12 @@ public:
 
     void process (float& l, float& r, float amount) noexcept
     {
-        const float yl = shape (l, amount), yr = shape (r, amount);
+        const float sl = shape (l, amount), sr = shape (r, amount);
+        dcYl_ = sl - dcXl_ + dcR_ * dcYl_;
+        dcXl_ = sl;
+        dcYr_ = sr - dcXr_ + dcR_ * dcYr_;
+        dcXr_ = sr;
+        const float yl = (float) dcYl_, yr = (float) dcYr_;
         // Compensation: match the output's RMS to the input's (linked), only ever turning down.
         // Fresh from a reset (while Corrupt fades it in) it settles fast, so it doesn't come in loud.
         const double c = warm_ > 0 ? fastCoef_ : rmsCoef_;
@@ -80,5 +89,6 @@ public:
 private:
     int warm_ = 0, warmLen_ = 1920;
     double rmsCoef_ = 1.0e-4, fastCoef_ = 1.0e-2, relCoef_ = 0.999, msIn_ = 0.0, msOut_ = 0.0, comp_ = 1.0, env_ = 0.0;
+    double dcR_ = 0.9987, dcXl_ = 0.0, dcXr_ = 0.0, dcYl_ = 0.0, dcYr_ = 0.0;
 };
 } // namespace fault::dsp

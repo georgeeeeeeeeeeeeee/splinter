@@ -1,6 +1,6 @@
 {
  "name": "Dust Choir",
- "category": "Ambient",
+ "category": "Texture",
  "about": "Reversed, wide and dusty swells, a bar at a time.",
  "params": {
   "clockSource": "Host",
@@ -15,6 +15,7 @@
   "breakOnMicro": false,
   "break": 0.0,
   "corruptType": "Vinyl",
-  "corrupt": 0.45
+  "corrupt": 0.45,
+  "output": -0.5
  }
 }

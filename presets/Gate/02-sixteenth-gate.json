@@ -1,0 +1,18 @@
+{
+ "name": "Sixteenth Gate",
+ "category": "Gate",
+ "about": "A tight sixteenth-note gate, half open. Pads and chords turn rhythmic.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.875,
+  "repeats": 1,
+  "mix": 100,
+  "windowing": 6,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": true,
+  "break": 0.55,
+  "output": 0.5
+ }
+}

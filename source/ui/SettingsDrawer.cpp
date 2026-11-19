@@ -39,6 +39,7 @@ SettingsDrawer::SettingsDrawer (FaultProcessor& p) : proc (p)
     right.push_back (combo ("freezeButtonMode", "Freeze button"));
     right.push_back (combo ("corruptSet", "Corrupt set"));
     right.push_back (toggle ("corruptAsReset", "Corrupt gate resets", colours::corrupt));
+    right.push_back (slider ("output", "Output"));
     right.push_back (toggle ("safetyClip", "Output clip (0 dBFS)", colours::corrupt));
     for (auto& c : left) addAndMakeVisible (*c);
     for (auto& c : right) addAndMakeVisible (*c);
@@ -50,7 +51,7 @@ SettingsDrawer::SettingsDrawer (FaultProcessor& p) : proc (p)
         addAndMakeVisible (gateLearn[(size_t) g]);
     }
     restore.onClick = [this] { proc.restoreDefaults(); };
-    restore.setTooltip ("Windowing 2%, Bend / Break / Freeze off, Macro, Unique stereo, latching gates and freeze, routes cleared");
+    restore.setTooltip ("Windowing 2%, Output 0 dB, Bend / Break / Freeze off, Macro, Unique stereo, latching gates and freeze, routes cleared");
     addAndMakeVisible (restore);
 }
 
@@ -63,6 +64,7 @@ void SettingsDrawer::paint (juce::Graphics& g)
     g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
     drawCaption (g, "Playback", leftArea.withHeight (14).translated (0, -16));
     drawCaption (g, "Gates", rightArea.withHeight (14).translated (0, -16));
+    drawCaption (g, "Output", outputArea.withHeight (14));
     drawCaption (g, "Gate notes (click, then play a note)", gateArea.withHeight (14).translated (0, -16));
     // MIDI in: what arrived, and where in its block (sample offset / block size).
     auto m = restore.getBounds().withX (restore.getRight() + 24).withRight (getWidth() - 14).withHeight (64).translated (0, -4);
@@ -82,7 +84,15 @@ void SettingsDrawer::resized()
     rightArea = top;
     auto la = leftArea, ra = rightArea;
     for (auto& c : left) c->setBounds (la.removeFromTop (30).reduced (0, 4));
-    for (auto& c : right) c->setBounds (ra.removeFromTop (30).reduced (0, 4));
+    for (size_t i = 0; i < right.size(); ++i)
+    {
+        if (i == kFirstOutputRow)   // the Output trim and clip get their own heading
+        {
+            ra.removeFromTop (8);
+            outputArea = ra.removeFromTop (16);
+        }
+        right[i]->setBounds (ra.removeFromTop (30).reduced (0, 4));
+    }
     r.removeFromTop (26);
     gateArea = r.removeFromTop (56);
     const int gw = gateArea.getWidth() / 3;

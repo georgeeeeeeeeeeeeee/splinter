@@ -1,6 +1,6 @@
 {
  "name": "Frozen Cloud",
- "category": "Ambient",
+ "category": "Texture",
  "about": "Long, soft windows with slow glides. Freeze it to hold a cloud.",
  "params": {
   "clockSource": "Internal",
@@ -13,6 +13,7 @@
   "bendOnMacro": true,
   "bend": 0.53,
   "corruptType": "Vinyl",
-  "corrupt": 0.1
+  "corrupt": 0.1,
+  "output": -0.5
  }
 }

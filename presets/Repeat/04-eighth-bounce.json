@@ -1,0 +1,17 @@
+{
+ "name": "Eighth Bounce",
+ "category": "Repeat",
+ "about": "Eighth-note repeats bouncing between the speakers, now and then from elsewhere in the beat.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 2,
+  "mix": 60,
+  "windowing": 10,
+  "width": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.2375,
+  "output": -2.5
+ }
+}

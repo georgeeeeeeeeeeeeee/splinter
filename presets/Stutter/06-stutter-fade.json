@@ -1,0 +1,21 @@
+{
+ "name": "Stutter Fade",
+ "category": "Stutter",
+ "about": "Each beat stutters and fades back into the dry signal before the next.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 8,
+  "mix": 100,
+  "windowing": 6,
+  "mod1Shape": "Saw",
+  "mod1Sync": "1/4",
+  "mod1Rate": 1.0,
+  "mod1Polarity": "Unipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Mix",
+  "route1Depth": -100,
+  "output": -3.0
+ }
+}

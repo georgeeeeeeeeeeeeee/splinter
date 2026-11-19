@@ -1,0 +1,16 @@
+{
+ "name": "Half-Bar Dub",
+ "category": "Repeat",
+ "about": "Half a bar back, slightly worn and wide: a dub echo for a send.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.375,
+  "repeats": 1,
+  "mix": 32,
+  "windowing": 15,
+  "width": 90,
+  "corruptType": "Vinyl",
+  "corrupt": 0.08,
+  "output": -0.5
+ }
+}

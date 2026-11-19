@@ -1,0 +1,20 @@
+{
+ "name": "Wheel Wind-Down",
+ "category": "Perform",
+ "about": "The mod wheel is the motor: pull it up to slow the tape, down to bring it back.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "cc1Polarity": "Unipolar",
+  "route1Source": "CC 1",
+  "route1Dest": "Bend",
+  "route1Depth": -50
+ }
+}

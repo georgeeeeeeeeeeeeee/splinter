@@ -1,0 +1,14 @@
+{
+ "name": "Quarter Echo",
+ "category": "Repeat",
+ "about": "One clean echo a beat behind, a little wider than the source. Tidy on a bus.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 35,
+  "windowing": 8,
+  "width": 75,
+  "output": -0.5
+ }
+}

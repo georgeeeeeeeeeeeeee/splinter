@@ -11,6 +11,7 @@
   "breakOnMacro": true,
   "break": 0.769,
   "corruptType": "Dropout",
-  "corrupt": 0.9
+  "corrupt": 0.9,
+  "output": -0.5
  }
 }

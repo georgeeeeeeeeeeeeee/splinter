@@ -11,6 +11,7 @@
   "breakOnMacro": true,
   "break": 0.275,
   "bendOnMacro": true,
-  "bend": 0.095
+  "bend": 0.095,
+  "output": -0.5
  }
 }

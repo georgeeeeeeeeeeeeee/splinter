@@ -1,0 +1,18 @@
+{
+ "name": "Octave Down",
+ "category": "Pitch",
+ "about": "Every beat replays an octave down: heavy, slurred, half speed.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 100,
+  "windowing": 15,
+  "mode": "Micro",
+  "bend": 0.3333,
+  "bendOnMicro": false,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "output": -0.5
+ }
+}

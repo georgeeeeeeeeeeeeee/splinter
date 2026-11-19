@@ -22,6 +22,7 @@
   "route1Dest": "Bend",
   "route1Depth": 3,
   "corruptType": "Destroy",
-  "corrupt": 0.18
+  "corrupt": 0.18,
+  "output": 0.5
  }
 }

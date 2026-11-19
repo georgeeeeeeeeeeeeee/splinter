@@ -1,6 +1,6 @@
 {
  "name": "Half-Speed Drift",
- "category": "Ambient",
+ "category": "Texture",
  "about": "An octave down, soft-edged and a little dusty.",
  "params": {
   "clockSource": "Host",
@@ -14,6 +14,7 @@
   "breakOnMicro": false,
   "break": 0.0,
   "corruptType": "Vinyl",
-  "corrupt": 0.2
+  "corrupt": 0.2,
+  "output": -0.5
  }
 }

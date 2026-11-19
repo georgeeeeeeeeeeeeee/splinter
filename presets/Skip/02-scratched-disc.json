@@ -11,6 +11,7 @@
   "breakOnMacro": true,
   "break": 0.305,
   "corruptType": "Decimate",
-  "corrupt": 0.3
+  "corrupt": 0.3,
+  "output": -4.5
  }
 }

@@ -112,3 +112,13 @@ It's a parameter rather than always on, so float-headroom setups can bypass it. 
 Adding the parameter bumped `kStateVersion` to 7, with a new fixture `tests/state/v7.xml`. v6 states load with the clipper on.
 
 The fuzz now also fails on any sample over 0 dBFS while the clipper is on.
+
+## D27 — The factory suite: ten categories, level-matched, checked by measurement (19 Nov 2026)
+
+George asked for Splinter to be stress-tested and given "a really thoughtful suite of presets arranged by type".
+
+- **Categories by kind of effect, gentlest first:** Repeat, Stutter, Skip, Gate, Tape, Pitch, Lo-Fi, Texture, Ruin, Perform. Six each, 60 in all. The 30 Stage 6 presets were kept where they were good (Ghost and Ambient merged into Texture; octave presets moved to Pitch). Repeat and Lo-Fi are for mixes and sends; Perform is for playing, and every Perform preset is dry or nearly so until it's played (mod wheel, gate notes, notes for pitch, or playing harder).
+- **Lo-Fi presets run at Repeats 1 on the fastest internal clock,** so the wet is the input 12.5 ms late (N3): colour without a rhythmic delay.
+- **Level-matched with a new Output trim (N44).** `tools/check_presets.py --calibrate` sets each preset's trim to bring its median level to the dry's, capped so that no preset leans on the clipper. Six presets (gaps or soft swells: Triplet Gate, Power Cut and four Textures) end up 2–4 dB under because a louder trim would clip. The trims live in `tuning/preset_trims.json`, apart from the definitions, so they can be re-measured after any change.
+- **Checked against the real plug-in, not by eye.** Each preset renders on the material its category is for, over three seeds and three tempos (and with scripted MIDI for Perform). The checks and the similarity measure are described in the README. Two fixed-seed presets (Fill Maker, Locked Groove) are deliberately repeatable: the same bars glitch the same way on every pass.
+- **What the stress test found:** Destroy produced DC (now blocked, N25); short repeated slices carry a little DC (left, N45); my own render tool had a dangling MIDI list (fixed); and the fuzz's +24 dBFS headroom check now measures before the Output trim. Survey: 148 settings × 4 materials. Fuzz: 3 × 4 minutes (about 30 hours of audio), passing.

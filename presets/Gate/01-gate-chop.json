@@ -1,6 +1,6 @@
 {
  "name": "Gate Chop",
- "category": "Stutter",
+ "category": "Gate",
  "about": "Each slice cut short, more on every other half bar.",
  "params": {
   "clockSource": "Host",
@@ -19,6 +19,7 @@
   "mod2Phase": 0.0,
   "route1Source": "Mod 2",
   "route1Dest": "Break",
-  "route1Depth": 20
+  "route1Depth": 20,
+  "output": -0.5
  }
 }

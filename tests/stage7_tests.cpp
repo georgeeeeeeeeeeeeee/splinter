@@ -59,3 +59,33 @@ TEST_CASE ("Engine: the clipper caps a hot input, and off is a straight bypass",
             CHECK (err < 1.0e-5f);
     }
 }
+
+TEST_CASE ("Engine: the output trim scales dry and wet, glides, and is exact at 0 dB", "[stage7][output]")
+{
+    constexpr double sr = 48000.0;
+    constexpr int n = 48000;
+    std::vector<float> in (n), outL (n), outR (n);
+    for (int i = 0; i < n; ++i) in[(size_t) i] = 0.25f * (float) std::sin (2.0 * 3.14159265358979 * 220.0 * i / sr);
+    const auto run = [&] (float db, float newDb = 1.0e9f) {
+        dsp::Engine e;
+        dsp::EngineParams p;
+        p.mix = 0.0f;
+        p.outputDb = db;
+        e.setParams (p);
+        e.prepare (sr, 512);
+        bool changed = false;
+        for (int i = 0; i < n; i += 512)
+        {
+            if (! changed && i >= n / 2 && newDb < 1.0e8f) { p.outputDb = newDb; e.setParams (p); changed = true; }
+            e.process (in.data() + i, in.data() + i, outL.data() + i, outR.data() + i, std::min (512, n - i));
+        }
+    };
+    run (0.0f);
+    for (int i = 0; i < n; ++i) REQUIRE (outL[(size_t) i] == in[(size_t) i]);                 // bit-exact
+    run (-6.0f);
+    for (int i = 0; i < n; ++i) REQUIRE (std::abs (outL[(size_t) i] - 0.501187f * in[(size_t) i]) < 1.0e-6f);
+    run (0.0f, -12.0f);                                                                         // a change glides
+    CHECK (std::abs (outL[(size_t) n - 100] - 0.251189f * in[(size_t) n - 100]) < 1.0e-5f);    // settled at -12 dB
+    const int at = ((n / 2 + 511) / 512) * 512 + 48;                                              // 1 ms after the change
+    CHECK (std::abs (outL[(size_t) at] / in[(size_t) at]) > 0.8f);                              // not a jump
+}

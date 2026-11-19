@@ -78,7 +78,7 @@ private:
     struct Raw { std::atomic<float> *time, *repeats, *mix, *windowing, *width, *freeze, *reset, *clock, *freezeMode,
                        *mode, *bend, *brk, *bendOnMacro, *bendOnMicro, *breakOnMacro, *breakOnMicro, *noteToSpeed,
                        *stereo, *seed, *corrupt, *corruptType, *corruptSet,
-                       *bendAtten, *breakAtten, *corruptAtten, *gateMode, *corruptAsReset, *envAttack, *envRelease, *envGain, *safetyClip; } raw {};
+                       *bendAtten, *breakAtten, *corruptAtten, *gateMode, *corruptAsReset, *envAttack, *envRelease, *envGain, *safetyClip, *output; } raw {};
     std::array<std::array<std::atomic<float>*, 5>, dsp::kNumModulators> rawMod {};   // shape, rate, sync, phase, polarity
     std::array<std::array<std::atomic<float>*, 3>, dsp::kNumRoutes> rawRoute {};     // source, dest, depth
     std::array<std::atomic<float>*, dsp::kNumCcLanes> rawCcPolarity {};

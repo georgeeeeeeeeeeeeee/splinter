@@ -1,6 +1,6 @@
 {
  "name": "Octave Bloom",
- "category": "Ambient",
+ "category": "Pitch",
  "about": "An octave up in soft, wide swells.",
  "params": {
   "clockSource": "Host",
@@ -13,6 +13,7 @@
   "bend": 0.6667,
   "bendOnMicro": false,
   "breakOnMicro": false,
-  "break": 0.0
+  "break": 0.0,
+  "output": -0.5
  }
 }

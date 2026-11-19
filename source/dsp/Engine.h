@@ -63,6 +63,7 @@ struct EngineParams
     bool corruptAsReset = false;              // the Corrupt gate acts as Reset
     // Stage 7: the output safety clipper (transparent to -1 dBFS, never past 0 dBFS).
     bool safetyClip = true;
+    float outputDb = 0.0f;   // output trim, -24..+12 dB, smoothed over 20 ms
 };
 
 // A MIDI note (or CC) for the engine, at a sample offset in the next process() block.
@@ -162,6 +163,9 @@ public:
     double sampleRate() const noexcept { return sr_; }
     int64_t samplesProcessed() const noexcept { return processed_; }
 
+    // The Output trim's gain as last applied (it glides): for tests that check headroom before it.
+    double outputGain() const noexcept { return outGain_; }
+
 private:
     // One channel's read head(s) and Macro state.
     struct Voice
@@ -203,6 +207,7 @@ private:
     Pcg32 tickRng (int stream, int64_t tickIndex) noexcept;
 
     double sr_ = 48000.0;
+    double outGain_ = 1.0, outCoef_ = 1.0e-3;
     EngineParams base_;   // from the host (setParams)
     EngineParams p_;      // what plays: base_ with gates and modulation applied
     HostTransport transport_;

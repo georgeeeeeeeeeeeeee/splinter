@@ -1,0 +1,29 @@
+{
+ "name": "Harder Hits",
+ "category": "Perform",
+ "about": "Plays straight when you play softly; hit harder and it breaks, stutters and crunches.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.35,
+  "corruptType": "Destroy",
+  "corrupt": 0.0,
+  "envAttack": 1,
+  "envRelease": 180,
+  "envGain": 4,
+  "route1Source": "Env",
+  "route1Dest": "Break",
+  "route1Depth": 55,
+  "route2Source": "Env",
+  "route2Dest": "Corrupt",
+  "route2Depth": 40,
+  "route3Source": "Env",
+  "route3Dest": "Repeats",
+  "route3Depth": 30,
+  "output": -2.5
+ }
+}

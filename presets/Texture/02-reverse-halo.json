@@ -1,6 +1,6 @@
 {
  "name": "Reverse Halo",
- "category": "Ghost",
+ "category": "Texture",
  "about": "The last beat plays backwards behind you, soft-edged and wide.",
  "params": {
   "clockSource": "Host",
@@ -11,6 +11,7 @@
   "width": 85,
   "mode": "Macro",
   "bendOnMacro": true,
-  "bend": 0.1925
+  "bend": 0.1925,
+  "output": -0.5
  }
 }

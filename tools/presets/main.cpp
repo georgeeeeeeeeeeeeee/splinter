@@ -3,6 +3,10 @@
 //   fault-presets --check --in build/fixtures/drums.wav [--out build/renders/presets]
 //       loads every factory preset strictly, renders the input through it (120 BPM, playing), prints
 //       peak / RMS against the dry input, and fails on a bad preset, NaN/Inf or a peak over +6 dBFS.
+//   fault-presets --render preset.json --in in.wav --out out.wav [--seed 5] [--bpm 120] [--midi events.json]
+//       renders one preset file (not yet compiled in) through the real processor, for designing presets.
+//       --seed sets a fixed seed after the preset loads, so renders repeat. events.json is a list of
+//       { "time": s, "note": 36, "on": true } and { "time": s, "cc": 1, "value": 0..127 }.
 //   fault-presets --snapshot ui.png --in drums.wav [--preset "Sixteenth Stutter"] [--drawer mod|settings] [--scale 1.5] [--seconds 3]
 
 #include "plugin/PluginEditor.h"
@@ -12,6 +16,7 @@
 
 #include <iostream>
 #include <map>
+#include <vector>
 
 namespace
 {
@@ -43,9 +48,13 @@ bool readWav (const juce::File& f, juce::AudioBuffer<float>& out, double& sr)
 }
 
 // Runs `in` (plus a tail) through the processor in 512-sample blocks, host playing at 120 BPM.
-juce::AudioBuffer<float> run (fault::FaultProcessor& p, const juce::AudioBuffer<float>& in, double sr, double seconds)
+struct TimedMidi { double time; juce::MidiMessage msg; };
+
+juce::AudioBuffer<float> run (fault::FaultProcessor& p, const juce::AudioBuffer<float>& in, double sr, double seconds,
+                              double bpm = 120.0, const std::vector<TimedMidi>& events = {})
 {
     FakeHost host;
+    host.bpm = bpm;
     p.setPlayHead (&host);
     p.prepareToPlay (sr, 512);
     const int total = (int) (seconds * sr);
@@ -59,6 +68,12 @@ juce::AudioBuffer<float> run (fault::FaultProcessor& p, const juce::AudioBuffer<
             for (int i = 0; i < n; ++i)
                 block.setSample (ch, i, pos + i < in.getNumSamples() ? in.getSample (ch, pos + i) : 0.0f);
         host.ppq = pos / sr * host.bpm / 60.0;
+        midi.clear();
+        for (const auto& e : events)
+        {
+            const int at = (int) std::llround (e.time * sr);
+            if (at >= pos && at < pos + n) midi.addEvent (e.msg, at - pos);
+        }
         p.processBlock (block, midi);
         for (int ch = 0; ch < 2; ++ch) out.copyFrom (ch, pos, block, ch, 0, n);
     }
@@ -144,6 +159,44 @@ int main (int argc, char* argv[])
         }
         std::cout << list.size() << " presets, " << failures << " failed" << std::endl;
         return failures == 0 ? 0 : 1;
+    }
+
+    if (opt ("--render").isNotEmpty())
+    {
+        fault::FaultProcessor p;
+        juce::String err;
+        const auto json = juce::JSON::parse (cwd.getChildFile (opt ("--render")).loadFileAsString());
+        if (! fault::PresetManager::apply (p.getApvts(), json, err, true))
+        {
+            std::cerr << "BAD PRESET: " << err << std::endl;
+            return 1;
+        }
+        if (opt ("--seed").isNotEmpty())
+            if (auto* sp = p.getApvts().getParameter ("seed"))
+                sp->setValueNotifyingHost (sp->convertTo0to1 ((float) opt ("--seed").getIntValue()));
+        std::vector<TimedMidi> events;
+        const auto midiJson = opt ("--midi").isNotEmpty() ? juce::JSON::parse (cwd.getChildFile (opt ("--midi")).loadFileAsString()) : juce::var();
+        if (auto* arr = midiJson.getArray())   // (the var must outlive the loop)
+                for (const auto& e : *arr)
+                {
+                    const double t = (double) e.getProperty ("time", 0.0);
+                    if (e.hasProperty ("cc"))
+                        events.push_back ({ t, juce::MidiMessage::controllerEvent (1, (int) e["cc"], (int) e["value"]) });
+                    else if ((bool) e.getProperty ("on", true))
+                        events.push_back ({ t, juce::MidiMessage::noteOn (1, (int) e["note"], (juce::uint8) (int) e.getProperty ("velocity", 100)) });
+                    else
+                        events.push_back ({ t, juce::MidiMessage::noteOff (1, (int) e["note"]) });
+                }
+        std::stable_sort (events.begin(), events.end(), [] (const TimedMidi& a, const TimedMidi& b) { return a.time < b.time; });
+        const double bpm = opt ("--bpm").isNotEmpty() ? opt ("--bpm").getDoubleValue() : 120.0;
+        const auto out = run (p, in, sr, in.getNumSamples() / sr + 1.0, bpm, events);
+        const auto f = cwd.getChildFile (opt ("--out"));
+        f.deleteFile();
+        juce::WavAudioFormat wav;
+        if (std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (new juce::FileOutputStream (f), sr, 2, 32, {}, 0)); w != nullptr)
+            w->writeFromAudioSampleBuffer (out, 0, out.getNumSamples());
+        std::cout << "wrote " << f.getFullPathName() << std::endl;
+        return 0;
     }
 
     if (opt ("--snapshot").isNotEmpty())

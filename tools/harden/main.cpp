@@ -4,7 +4,8 @@
 //                                                   the committed fixtures from earlier versions
 //   fault-harden --write-fixture tests/state/v6.xml writes this version's fixture (do it once per version)
 //   fault-harden --fuzz [--minutes 10] [--seed 1]   random automation, MIDI, transport, block sizes and
-//                                                   sample rates; fails on NaN/Inf, a peak over +24 dBFS,
+//                                                   sample rates; fails on NaN/Inf, a peak over +24 dBFS
+//                                                   (before the Output trim), over 0 dBFS with the clipper on,
 //                                                   a stuck gate or a heap allocation in processBlock
 //   fault-harden --cpu [--seconds 20]               processing time against real time, per scenario
 
@@ -477,9 +478,13 @@ int runFuzz (double minutes, uint32_t seed)
                 inPeak = std::max (inPeak, thisPeak);
             }
             const bool clipOn = clipParam->getValue() > 0.5f;
+            // The +24 dBFS limit is the engine's own headroom, so it's checked before the Output trim
+            // (up to +12 dB, which a user adds on purpose); during a trim glide, the larger gain counts.
+            const float gainBefore = (float) p.engine().outputGain();
             inAudio = true;
             p.processBlock (view, midi);
             inAudio = false;
+            const float trimGain = std::max (gainBefore, (float) p.engine().outputGain());   // it glides monotonically in a block
             for (int ch = 0; ch < 2; ++ch)
                 for (int s = 0; s < len; ++s)
                 {
@@ -498,7 +503,7 @@ int runFuzz (double minutes, uint32_t seed)
                         worstGainWhere = "signal " + juce::String (sig.kind) + ", in peak " + juce::String (20.0 * std::log10 (inPeak), 1) + " dBFS; "
                                          + p.getApvts().copyState().toXmlString().removeCharacters ("\n").substring (0, 4000);
                     }
-                    if (a > kOver) { ++overs; problem ("peak " + juce::String (20.0 * std::log10 (a), 1) + " dBFS"); }
+                    if (a / trimGain > kOver) { ++overs; problem ("peak " + juce::String (20.0 * std::log10 (a / trimGain), 1) + " dBFS before the Output trim"); }
                 }
             if (host.playing) host.ppq += len / sr * host.bpm / 60.0;
             pos += len;

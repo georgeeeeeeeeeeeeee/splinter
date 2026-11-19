@@ -1,0 +1,19 @@
+{
+ "name": "Keyboard Pitch",
+ "category": "Perform",
+ "about": "Play notes to set the repeats' pitch (C3 is the original). Gate notes C1 to F1 still work.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 2,
+  "mix": 100,
+  "noteToSpeed": true,
+  "windowing": 8,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "output": -1.5
+ }
+}

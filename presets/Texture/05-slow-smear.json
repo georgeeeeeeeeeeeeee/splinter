@@ -1,6 +1,6 @@
 {
  "name": "Slow Smear",
- "category": "Ambient",
+ "category": "Texture",
  "about": "Long windows that stretch and glide, the length drifting slowly.",
  "params": {
   "clockSource": "Internal",
@@ -17,6 +17,7 @@
   "mod1Phase": 0.0,
   "route1Source": "Mod 1",
   "route1Dest": "Time",
-  "route1Depth": 6
+  "route1Depth": 6,
+  "output": -0.5
  }
 }

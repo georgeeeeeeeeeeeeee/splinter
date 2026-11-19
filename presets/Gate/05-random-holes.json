@@ -1,0 +1,15 @@
+{
+ "name": "Random Holes",
+ "category": "Gate",
+ "about": "Holes punched into the beat at random, some short, some long.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.625,
+  "repeats": 2,
+  "mix": 100,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.752,
+  "output": -1.0
+ }
+}

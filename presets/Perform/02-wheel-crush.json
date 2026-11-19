@@ -1,0 +1,18 @@
+{
+ "name": "Wheel Crush",
+ "category": "Perform",
+ "about": "The mod wheel crushes it, from clean to a few bits.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "corruptType": "Decimate",
+  "corrupt": 0.0,
+  "cc1Polarity": "Unipolar",
+  "route1Source": "CC 1",
+  "route1Dest": "Corrupt",
+  "route1Depth": 100,
+  "output": -1.0
+ }
+}

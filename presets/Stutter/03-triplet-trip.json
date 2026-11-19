@@ -17,6 +17,7 @@
   "route1Depth": 40,
   "mode": "Macro",
   "breakOnMacro": true,
-  "break": 0.245
+  "break": 0.245,
+  "output": -0.5
  }
 }

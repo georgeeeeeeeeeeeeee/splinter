@@ -1,0 +1,22 @@
+{
+ "name": "Filter Drift",
+ "category": "Lo-Fi",
+ "about": "A low-pass that opens and closes over two bars.",
+ "params": {
+  "clockSource": "Internal",
+  "time": 1.0,
+  "repeats": 1,
+  "mix": 100,
+  "corruptType": "DJ Filter",
+  "corrupt": 0.3,
+  "mod1Shape": "Sine",
+  "mod1Sync": "2 bars",
+  "mod1Rate": 1.0,
+  "mod1Polarity": "Bipolar",
+  "mod1Phase": 0.0,
+  "route1Source": "Mod 1",
+  "route1Dest": "Corrupt",
+  "route1Depth": 22,
+  "output": -0.5
+ }
+}

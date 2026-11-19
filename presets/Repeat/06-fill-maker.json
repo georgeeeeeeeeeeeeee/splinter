@@ -1,0 +1,16 @@
+{
+ "name": "Fill Maker",
+ "category": "Repeat",
+ "about": "Plays it straight, but every so often a beat turns into a roll. Seed fixed: the same bars fill every time.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 100,
+  "seed": 2026,
+  "mode": "Macro",
+  "breakOnMacro": true,
+  "break": 0.365,
+  "output": -0.5
+ }
+}

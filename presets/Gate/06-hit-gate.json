@@ -1,0 +1,24 @@
+{
+ "name": "Hit Gate",
+ "category": "Gate",
+ "about": "Hits come through whole; everything between them is chopped away. Play harder for more.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.875,
+  "repeats": 1,
+  "mix": 100,
+  "windowing": 5,
+  "mode": "Micro",
+  "bend": 0.5,
+  "bendOnMicro": false,
+  "breakOnMicro": true,
+  "break": 0.95,
+  "envAttack": 1,
+  "envRelease": 120,
+  "envGain": 6,
+  "route1Source": "Env",
+  "route1Dest": "Break",
+  "route1Depth": -100,
+  "output": 0.5
+ }
+}

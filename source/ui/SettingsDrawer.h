@@ -22,6 +22,7 @@ private:
     std::array<juce::TextButton, dsp::kNumGates> gateLearn;
     juce::TextButton restore { "Restore defaults" };
     juce::StringArray midiLines;   // the last few MIDI events, with their sample offsets
-    juce::Rectangle<int> leftArea, rightArea, gateArea;
+    juce::Rectangle<int> leftArea, rightArea, gateArea, outputArea;
+    static constexpr size_t kFirstOutputRow = 4;   // right column: four gate settings, then Output and the clip
 };
 } // namespace fault::ui

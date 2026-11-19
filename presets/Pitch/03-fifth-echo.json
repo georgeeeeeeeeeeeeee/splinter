@@ -1,0 +1,19 @@
+{
+ "name": "Fifth Echo",
+ "category": "Pitch",
+ "about": "Each beat echoes a fifth higher: harmony from nothing. Best on melodic parts.",
+ "params": {
+  "clockSource": "Host",
+  "time": 0.5,
+  "repeats": 1,
+  "mix": 45,
+  "windowing": 20,
+  "width": 55,
+  "mode": "Micro",
+  "bend": 0.5972,
+  "bendOnMicro": false,
+  "breakOnMicro": false,
+  "break": 0.0,
+  "output": -0.5
+ }
+}

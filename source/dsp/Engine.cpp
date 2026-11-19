@@ -35,6 +35,7 @@ void Engine::prepare (double sampleRate, int)
     ccCoef_ = 1.0 - std::exp (-(double) kControlSamples / (0.01 * sampleRate));   // CC lanes: 10 ms smoothing
     smoothLen_ = std::max (1, (int) (0.02 * sampleRate));
     octCoef_ = 1.0 - std::exp (-1.0 / (0.02 * sampleRate));   // Bend knob glide, 20 ms
+    outCoef_ = 1.0 - std::exp (-1.0 / (0.02 * sampleRate));   // Output trim, 20 ms
     reset();
 }
 
@@ -58,6 +59,7 @@ void Engine::reset() noexcept
     mix_ = mixTarget_ = std::clamp (p_.mix, 0.0f, 1.0f);
     width_ = widthTarget_ = std::clamp (p_.width, 0.0f, 1.0f);
     smoothLeft_ = 0;
+    outGain_ = std::pow (10.0, std::clamp (p_.outputDb, -24.0f, 12.0f) / 20.0);
     processed_ = 0;
     numNotes_ = 0;
     hasPitch_ = false;
@@ -711,6 +713,18 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
         clock_.beginBlock (t, end - i, pulse);
         renderSegment (inL, inR, outL, outR, i, end);
         i = end;
+    }
+    {
+        // Output trim. At 0 dB with nothing to glide, the multiply is skipped: output stays bit-exact.
+        const double target = std::pow (10.0, std::clamp (p_.outputDb, -24.0f, 12.0f) / 20.0);
+        if (target != 1.0 || outGain_ != 1.0)
+            for (int k = 0; k < n; ++k)
+            {
+                outGain_ += (target - outGain_) * outCoef_;
+                if (std::abs (outGain_ - target) < 1.0e-7) outGain_ = target;
+                outL[k] = (float) (outL[k] * outGain_);
+                if (outR != outL) outR[k] = (float) (outR[k] * outGain_);
+            }
     }
     if (p_.safetyClip)
     {
