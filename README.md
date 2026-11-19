@@ -71,7 +71,8 @@ In Live: put Splinter on an audio track, make a MIDI track, and set its MIDI To 
   - The lime ring on a knob shows where modulation has taken it.
 - **Mod drawer:** modulators with scopes, the envelope follower, CC lanes (learn), and the 8 routes. Drag a source chip onto any of the six knobs to route it (50% depth, or the existing route if there is one).
 - **Settings drawer:** windowing, width, stereo, seed, note-to-speed, attenuators, gate and freeze behaviour, Corrupt set and Corrupt-as-reset, Output clip (a safety clipper, on by default: untouched below −1 dBFS, never above 0 dBFS; "Clip" lights in the buffer view when it acts), gate notes (learn), Restore defaults, and a MIDI-in readout.
-- **Resizable:** fixed ratio, from 80% to 200% of 900 × 560.
+- **Break this bar** (the strip along the bottom): press it and the next bar line is glitched: the whole bar, two bars, or just its last beat or two leading into the downbeat. Then it snaps back clean on the downbeat. Amount sets how hard it breaks. **Every** 2/4/8/16 bars breaks the end of every Nth bar by itself, each with Chance. It also works as a host parameter (map it to a key in Live) and on a gate note you learn. The button blinks while armed and lights while it plays. Details: SPEC_NOTES N46.
+- **Resizable:** fixed ratio, from 80% to 200% of 900 × 600.
 
 ## Presets
 

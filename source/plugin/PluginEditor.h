@@ -17,7 +17,7 @@ namespace fault
 class FaultEditor final : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
-    static constexpr int kBaseW = 900, kBaseH = 560;
+    static constexpr int kBaseW = 900, kBaseH = 600;
     explicit FaultEditor (FaultProcessor&);
     ~FaultEditor() override;
     void resized() override;
@@ -52,6 +52,10 @@ private:
     juce::TextButton macroBtn { "Macro" }, microBtn { "Micro" }, intBtn { "Int" }, hostBtn { "Host" }, noteBtn { "Note" }, resetBtn { "Reset" };
     juce::TextButton prevBtn { "<" }, nextBtn { ">" }, saveBtn { "Save" }, modBtn { "Mod" }, setBtn { "Settings" };
     juce::ComboBox presetBox;
+    // Break this bar: the button (momentary, like Reset), its length, amount, and the auto mode.
+    juce::TextButton fillBtn { "Break this bar" };
+    std::unique_ptr<ui::ParamCombo> fillLength, fillEvery;
+    std::unique_ptr<ui::ParamSlider> fillAmount, fillChance;
     ui::ModDrawer modDrawer;
     ui::SettingsDrawer settingsDrawer;
     int presetCount = -1;

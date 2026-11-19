@@ -95,9 +95,9 @@ void SettingsDrawer::resized()
     }
     r.removeFromTop (26);
     gateArea = r.removeFromTop (56);
-    const int gw = gateArea.getWidth() / 3;
+    const int gw = gateArea.getWidth() / 4;
     for (int g = 0; g < dsp::kNumGates; ++g)
-        gateLearn[(size_t) g].setBounds (juce::Rectangle<int> (gateArea.getX() + (g % 3) * gw, gateArea.getY() + (g / 3) * 28, gw, 28).reduced (3, 2));
+        gateLearn[(size_t) g].setBounds (juce::Rectangle<int> (gateArea.getX() + (g % 4) * gw, gateArea.getY() + (g / 4) * 28, gw, 28).reduced (3, 2));
     r.removeFromTop (14);
     restore.setBounds (r.removeFromTop (28).removeFromLeft (160));
 }
@@ -128,7 +128,9 @@ void SettingsDrawer::tick()
     {
         const bool learning = proc.learnGate.load() == g;
         gateLearn[(size_t) g].setButtonText (str (params::kGateNames[g]) + "  "
-                                             + (learning ? juce::String ("play a note...") : juce::MidiMessage::getMidiNoteName (proc.gateNotes[(size_t) g].load(), true, true, 3)));
+                                             + (learning ? juce::String ("play a note...")
+                                                       : proc.gateNotes[(size_t) g].load() < 0 ? juce::String ("none")
+                                                       : juce::MidiMessage::getMidiNoteName (proc.gateNotes[(size_t) g].load(), true, true, 3)));
         gateLearn[(size_t) g].setToggleState (learning, juce::dontSendNotification);
     }
 }

@@ -22,6 +22,8 @@ struct HostTransport
     bool playing = false;
     double bpm = 120.0;
     double ppq = 0.0;       // beat position of the block's first sample
+    double barLength = 4.0; // quarter-note beats per bar (the time signature), for Break this bar
+    double barStart = 0.0;  // ppq of a bar line (the last one the host reported)
 };
 
 class Clock
@@ -52,6 +54,7 @@ public:
     int step() const noexcept { return step_; }
     uint32_t stepChanges() const noexcept { return stepChanges_; }   // UI flag: div/mult step changed
     void resync() noexcept { resync_ = true; }                       // Reset: next pulse / now (internal)
+    void tickNow() noexcept { tickNow_ = true; }                     // a tick on the next block's first sample (Break this bar)
     void transportStarted() noexcept { origin_ = 0.0; }              // host grid back on the bar
 
 private:
@@ -61,7 +64,7 @@ private:
     double sr_ = 48000.0, phase_ = 0.0, period_ = 48000.0, lastPpqEnd_ = -1.0;
     float time_ = 0.5f;
     ClockSource source_ = ClockSource::internal;
-    bool wasPlaying_ = false, resync_ = false;
+    bool wasPlaying_ = false, resync_ = false, tickNow_ = false;
     int step_ = -1;
     uint32_t stepChanges_ = 0;
     static constexpr int kMaxTicks = 4096;

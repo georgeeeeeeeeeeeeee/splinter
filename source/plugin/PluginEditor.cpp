@@ -79,6 +79,25 @@ FaultEditor::FaultEditor (FaultProcessor& p)
     };
     content.addAndMakeVisible (resetBtn);
 
+    // Break this bar.
+    fillBtn.setTooltip ("Break this bar: waits for its place before the next bar line, glitches it, and lets go on the downbeat. "
+                        "Also on a MIDI note (the Break bar gate) and as a parameter you can map to a key");
+    fillBtn.setColour (juce::TextButton::buttonOnColourId, colours::brk);
+    fillBtn.onStateChange = [this, &s] {
+        if (auto* q = s.getParameter ("fillTrigger"))
+            if ((q->getValue() > 0.5f) != fillBtn.isDown()) q->setValueNotifyingHost (fillBtn.isDown() ? 1.0f : 0.0f);
+    };
+    content.addAndMakeVisible (fillBtn);
+    fillLength = std::make_unique<ParamCombo> (s, "fillLength");
+    fillEvery = std::make_unique<ParamCombo> (s, "fillEvery");
+    fillLength->box.setTooltip ("How much breaks: the last beat, the last two beats, the whole bar or two bars");
+    fillEvery->box.setTooltip ("By hand, or on its own: the end of every 2, 4, 8 or 16 bars, with the Chance below");
+    fillAmount = std::make_unique<ParamSlider> (s, "fillAmount", "Amount", colours::brk);
+    fillChance = std::make_unique<ParamSlider> (s, "fillChance", "Chance", colours::brk);
+    for (auto* c : { (juce::Component*) fillLength.get(), (juce::Component*) fillEvery.get(), (juce::Component*) fillAmount.get(),
+                     (juce::Component*) fillChance.get() })
+        content.addAndMakeVisible (c);
+
     for (auto* b : { &prevBtn, &nextBtn, &saveBtn, &modBtn, &setBtn })
         content.addAndMakeVisible (b);
     modBtn.setColour (juce::TextButton::buttonOnColourId, colours::mod);
@@ -165,6 +184,16 @@ void FaultEditor::layout()
     x += 14;
     resetBtn.setBounds (x, y, 66, h);
 
+    // Break this bar, along the bottom.
+    {
+        const int fy = 552, fh = 28;
+        fillBtn.setBounds (18, fy, 150, fh);
+        fillLength->setBounds (184, fy + 2, 96, fh - 4);
+        fillAmount->setBounds (296, fy, 210, fh);
+        fillEvery->setBounds (528, fy + 2, 130, fh - 4);
+        fillChance->setBounds (674, fy, 210, fh);
+    }
+
     const auto drawerArea = juce::Rectangle<int> (184, 52, 532, 496);
     modDrawer.setBounds (drawerArea);
     settingsDrawer.setBounds (drawerArea);
@@ -199,6 +228,8 @@ void FaultEditor::Content::paint (juce::Graphics& g)
     drawCaption (g, "Damage", { 732, 512, 150, 14 }, colours::faint, juce::Justification::centred);
     drawCaption (g, "Mode", { 184, 506, 126, 14 }, colours::faint, juce::Justification::centred);
     drawCaption (g, "Clock", { 460, 506, 160, 14 }, colours::faint, juce::Justification::centred);
+    g.setColour (colours::line);
+    g.drawHorizontalLine (536, 16.0f, 884.0f);
 }
 
 void FaultEditor::showDrawer (int which)
@@ -355,6 +386,14 @@ void FaultEditor::timerCallback()
     noteBtn.setToggleState (clock == 2, juce::dontSendNotification);
     // A gate can freeze without the parameter: the button shows what the buffer is doing.
     freeze.setColour (juce::TextButton::textColourOffId, proc.engine().status().frozen.load() ? colours::freeze : colours::dim);
+    // Break this bar: lit while it plays, blinking while it waits for its place.
+    {
+        const int f = proc.engine().status().fill.load (std::memory_order_relaxed);
+        const bool blink = (juce::Time::getMillisecondCounter() / 150) % 2 == 0;
+        fillBtn.setToggleState (f == 2 || (f == 1 && blink), juce::dontSendNotification);
+        fillBtn.setButtonText (f == 1 ? "Break this bar (armed)" : "Break this bar");
+        fillChance->setEnabled (param01 ("fillEvery") > 0.5f);
+    }
 
     for (auto* k : { time.get(), repeats.get(), mix.get(), bend.get(), brk.get(), corrupt.get() })
         k->refresh();

@@ -15,7 +15,10 @@
 //     "corrupt": 0.5, "corruptType": "decimate"|"dropout"|"destroy"|"djfilter"|"vinyl", "corruptSet": "all"|"original3" }
 //   Stage 5: "clock": "note", "gateMode": "latching"|"momentary", "corruptAsReset": false,
 //   Stage 7: "safetyClip": true (the output clipper; on by default, as in the plug-in),
-//     "bendAtten" / "breakAtten" / "corruptAtten": 0..1, "gateNotes": [36, 37, 38, 39, 40, 41],
+//     "bendAtten" / "breakAtten" / "corruptAtten": 0..1, "gateNotes": [36, 37, 38, 39, 40, 41, -1],
+//   Break this bar: "fillLength": "1 beat"|"2 beats"|"1 bar"|"2 bars", "fillAmount": 0..1, "fillEvery": 0|2|4|8|16,
+//     "fillChance": 0..1; fire one with a midi event { "time": 1.9, "gate": "fill", "on": true }
+//     (the fill gate gets note 127 if "gateNotes" gives it none; bars are 4/4 from 0)
 //     "mods": [ { "shape": "sine"|"triangle"|"saw"|"square"|"sh"|"smooth", "rate": 1.0, "sync": "free"|"1/16"|...,
 //                 "phase": 0..1, "polarity": "bi"|"uni" }, ... ],
 //     "env": { "attack": 10, "release": 200, "gain": 0 },          // ms, ms, dB
@@ -62,7 +65,7 @@ int indexOf (const juce::StringArray& names, const juce::var& v)
 const juce::StringArray kShapeNames { "sine", "triangle", "saw", "square", "sh", "smooth" };
 const juce::StringArray kSourceNames { "none", "mod1", "mod2", "mod3", "mod4", "env", "cc1", "cc2", "cc3", "cc4" };
 const juce::StringArray kDestNames { "none", "time", "repeats", "mix", "bend", "break", "corrupt" };
-const juce::StringArray kGateNames { "freeze", "bend", "break", "corrupt", "reset", "clock" };
+const juce::StringArray kGateNames { "freeze", "bend", "break", "corrupt", "reset", "clock", "fill" };
 int syncIndex (const juce::var& v)
 {
     if (! v.isString()) return (int) v;
@@ -134,6 +137,16 @@ bool apply (fault::dsp::EngineParams& p, const juce::String& key, const juce::va
     else if (key == "gateMode") p.gateMode = v.toString() == "momentary" ? GateMode::momentary : GateMode::latching;
     else if (key == "corruptAsReset") p.corruptAsReset = (bool) v;
     else if (key == "safetyClip") p.safetyClip = (bool) v;
+    else if (key == "fillLength")
+    {
+        const juce::StringArray names { "1beat", "2beats", "1bar", "2bars" };
+        const int i = v.isString() ? names.indexOf (v.toString().toLowerCase().removeCharacters (" _-")) : (int) v;
+        if (i < 0 || i > 3) return false;
+        p.fillLength = (FillLength) i;
+    }
+    else if (key == "fillAmount") p.fillAmount = (float) (double) v;
+    else if (key == "fillEvery") p.fillEvery = (int) v;   // bars; 0 = by hand
+    else if (key == "fillChance") p.fillChance = (float) (double) v;
     else if (key == "bendAtten") p.mod.bendAtten = (float) (double) v;
     else if (key == "breakAtten") p.mod.breakAtten = (float) (double) v;
     else if (key == "corruptAtten") p.mod.corruptAtten = (float) (double) v;
@@ -275,7 +288,7 @@ int main (int argc, char* argv[])
     int block = 512;
     std::vector<Event> events;
     std::vector<Midi> midi;
-    std::array<int, fault::dsp::kNumGates> gateNotes { 36, 37, 38, 39, 40, 41 };
+    std::array<int, fault::dsp::kNumGates> gateNotes { 36, 37, 38, 39, 40, 41, -1 };
     if (opt ("--params").isNotEmpty())
     {
         const auto json = juce::JSON::parse (cwd.getChildFile (opt ("--params")));
@@ -341,6 +354,9 @@ int main (int argc, char* argv[])
     engine.setTables (tables);
     engine.setSessionSeed (sessionSeed);
     engine.setParams (p);
+    for (const auto& m : midi)   // a "fill" gate event with no fill note: give it one nothing else uses
+        if (m.gate == fault::dsp::gateFill && gateNotes[(size_t) fault::dsp::gateFill] < 0)
+            gateNotes[(size_t) fault::dsp::gateFill] = 127;
     engine.setGateNotes (gateNotes);
     for (auto& m : midi)
         if (m.gate >= 0) m.note = gateNotes[(size_t) m.gate];

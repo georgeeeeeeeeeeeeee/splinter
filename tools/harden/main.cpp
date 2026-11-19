@@ -248,7 +248,7 @@ int runState (const juce::File& fixtures)
         }
         bool ccOk = true;
         for (auto& c : p.ccNumbers) ccOk = ccOk && c.load() >= 0 && c.load() <= 127;
-        for (auto& g : p.gateNotes) ccOk = ccOk && g.load() >= 0 && g.load() <= 127;
+        for (auto& g : p.gateNotes) ccOk = ccOk && g.load() >= -1 && g.load() <= 127;   // -1: no note (Break bar's default)
         check (finite && inRange, "bad values (nan, inf, 1e9, -40, text) load finite and in range");
         check (std::abs (p.getApvts().getRawParameterValue ("time")->load() - fault::params::time.def) < 1.0e-6f, "a nan value loads as the default");
         check (ccOk && p.gateNotes[2].load() == fault::params::kDefaultGateNotes[2], "bad / short CC and gate lists are clamped, the rest default");

@@ -28,6 +28,7 @@ void Clock::reset() noexcept
     wasPlaying_ = false;
     lastPpqEnd_ = -1.0;
     resync_ = false;
+    tickNow_ = false;
     numTicks_ = 0;
     freeCount_ = 0;
     origin_ = 0.0;
@@ -107,8 +108,17 @@ void Clock::noteBlock (const HostTransport& t, int n, bool pulse) noexcept
 void Clock::beginBlock (const HostTransport& t, int n, bool pulse) noexcept
 {
     numTicks_ = 0;
+    // Break this bar starting or ending: a tick on this block's first sample, whatever the source, so the
+    // fill's first window and the clean one after it both start exactly on the beat.
+    const bool now = tickNow_;
+    tickNow_ = false;
     if (source_ == ClockSource::note)
     {
+        if (now)
+        {
+            addTick (0, freeCount_++);
+            lastTick_ = (double) now_;
+        }
         const int s = hostStep (time_);
         if (step_ >= 0 && s != step_)
             ++stepChanges_;
@@ -143,6 +153,8 @@ void Clock::beginBlock (const HostTransport& t, int n, bool pulse) noexcept
         if (resync_)
             origin_ = std::ceil (t.ppq - 1.0e-7);
         const double rel = t.ppq - origin_;
+        if (now)
+            addTick (0, (int64_t) std::floor (rel * rate + 1.0e-7));
         for (auto k = (int64_t) std::ceil (rel * rate - 1.0e-7);; ++k)
         {
             const int offset = (int) std::ceil (((double) k / rate - rel) / bps - 1.0e-6);
@@ -165,6 +177,11 @@ void Clock::beginBlock (const HostTransport& t, int n, bool pulse) noexcept
         phase_ = 0.0;
         freeCount_ = 0;
         addTick (0, freeCount_++);   // Reset in internal mode: a new window right away
+    }
+    else if (now)
+    {
+        phase_ = 0.0;
+        addTick (0, freeCount_++);
     }
     const double inc = 1.0 / std::max (1.0, period_);
     for (int i = 0; i < n; ++i)

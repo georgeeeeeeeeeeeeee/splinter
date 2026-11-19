@@ -57,11 +57,21 @@ inline constexpr std::string_view kModShapes[] = { "Sine", "Triangle", "Saw", "S
 inline constexpr std::string_view kPolarities[] = { "Unipolar", "Bipolar" };
 inline constexpr std::string_view kModSources[] = { "None", "Mod 1", "Mod 2", "Mod 3", "Mod 4", "Env", "CC 1", "CC 2", "CC 3", "CC 4" };
 inline constexpr std::string_view kModDests[] = { "None", "Time", "Repeats", "Mix", "Bend", "Break", "Corrupt" };
-inline constexpr std::string_view kGateNames[] = { "Freeze", "Bend", "Break", "Corrupt", "Reset", "Note clock" };
-inline constexpr int kDefaultGateNotes[] = { 36, 37, 38, 39, 40, 41 };   // C1 .. F1 (Live's numbering, C3 = 60)
+inline constexpr std::string_view kGateNames[] = { "Freeze", "Bend", "Break", "Corrupt", "Reset", "Note clock", "Break bar" };
+// C1 .. F1 (Live's numbering, C3 = 60). Break bar has no note until you learn one (-1): any default
+// would steal a pitch from someone's existing set.
+inline constexpr int kDefaultGateNotes[] = { 36, 37, 38, 39, 40, 41, -1 };
 inline constexpr int kDefaultCcNumbers[] = { 1, 16, 17, 18 };            // mod wheel, then general purpose 1-3
 
-inline constexpr int kStateVersion = 8;   // 7: safetyClip (Stage 7); 8: output trim
+// Break this bar: fillTrigger fires on its rising edge (a button, automation or a MIDI-mapped key).
+inline constexpr std::string_view fillTriggerId = "fillTrigger", fillLengthId = "fillLength", fillEveryId = "fillEvery";
+inline constexpr FloatSpec fillAmount { "fillAmount", "Break Amount", 0.0f, 100.0f, 60.0f, "%" };
+inline constexpr FloatSpec fillChance { "fillChance", "Break Chance", 0.0f, 100.0f, 50.0f, "%" };
+inline constexpr std::string_view kFillLengths[] = { "1 beat", "2 beats", "1 bar", "2 bars" };
+inline constexpr std::string_view kFillEvery[] = { "By hand", "Every 2 bars", "Every 4 bars", "Every 8 bars", "Every 16 bars" };
+inline constexpr int kFillEveryBars[] = { 0, 2, 4, 8, 16 };
+
+inline constexpr int kStateVersion = 9;   // 7: safetyClip (Stage 7); 8: output trim; 9: Break this bar
 
 float dbToGain (float db) noexcept;
 } // namespace fault::params

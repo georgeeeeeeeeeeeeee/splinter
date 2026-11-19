@@ -79,6 +79,9 @@ void Engine::reset() noexcept
     offsets_ = {};
     clearGateState();
     lastPlaying_ = -1;
+    fill_ = {};
+    fillRequested_ = false;
+    freeBeat_ = 0.0;
     tickCount_.store (0, std::memory_order_release);
 }
 
@@ -92,6 +95,7 @@ void Engine::reseed() noexcept
     const uint64_t ms = p_.seed != 0 ? mix64 ((uint64_t) (uint32_t) p_.seed * 0x9e3779b97f4a7c15ULL ^ 0x30d) : mix64 (sessionSeed_ ^ 0x30d);
     for (int m = 0; m < kNumModulators; ++m)
         mods_[(size_t) m].reseed (mix64 (ms + (uint64_t) m));
+    fillRng_.seed (mix64 (sessionSeed_ ^ 0xf111), 11);
 }
 
 void Engine::clearGateState() noexcept
@@ -188,6 +192,27 @@ void Engine::applyEffective() noexcept
     const int setSize = base_.corruptSet == CorruptSet::original3 ? 3 : kNumCorruptTypes;
     for (int k = ((corruptSteps_ % setSize) + setSize) % setSize; k > 0; --k)
         e.corruptType = Corrupt::nextType (e.corruptType, e.corruptSet);
+    if (fill_.active)
+    {
+        // Break this bar: fully wet, Macro dice on a fast clock locked to the beat (1/8 notes for a light
+        // fill, 1/16 from 40%), the Break dice always and the Bend dice from 25%, Corrupt creeping in
+        // above 75%. Knobs already further up keep their own setting.
+        const float a = unit (base_.fillAmount);
+        e.mix = 1.0f;
+        e.mode = Mode::macro;
+        e.clock = ClockSource::host;
+        e.time = (a < 0.4f ? 5.0f : 7.0f) / 8.0f;   // host steps x2, x4
+        e.repeats = 1;
+        e.brk = std::max (e.breakOnMacro ? e.brk : 0.0f, 0.2f + 0.7f * a);
+        e.breakOnMacro = true;
+        if (a >= 0.25f)
+        {
+            e.bend = std::max (e.bendOnMacro ? e.bend : 0.0f, 0.1f + 0.75f * a);
+            e.bendOnMacro = true;
+        }
+        if (a > 0.75f)
+            e.corrupt = std::max (e.corrupt, 2.0f * (a - 0.75f));
+    }
     p_ = e;
 
     clock_.setSource (p_.clock);
@@ -343,6 +368,7 @@ bool Engine::handleNote (const NoteEvent& e) noexcept
             break;
         case gateReset: clock_.resync(); break;
         case gateClock: pulse = p_.clock == ClockSource::note; break;
+        case gateFill: fillRequested_ = true; break;   // a one-shot: note-offs and gate mode don't matter
         default: break;
     }
     applyEffective();
@@ -660,6 +686,98 @@ void Engine::renderSegment (const float* inL, const float* inR, float* outL, flo
     }
 }
 
+double Engine::fillBeats() const noexcept
+{
+    switch (base_.fillLength)
+    {
+        case FillLength::beat: return 1.0;
+        case FillLength::twoBeats: return std::min (2.0, barLength_);
+        case FillLength::bar: return barLength_;
+        case FillLength::twoBars: return 2.0 * barLength_;
+    }
+    return barLength_;
+}
+
+bool Engine::updateFill (double beat, bool playing, double segBeats) noexcept
+{
+    constexpr double eps = 1.0e-6;
+    bool changed = false;
+    const auto stop = [&] {
+        if (fill_.active)
+        {
+            fill_.active = false;
+            clock_.tickNow();   // back to clean on this very sample
+            changed = true;
+        }
+        fill_.pending = false;
+    };
+    // The beat line changed under us (transport start / stop, a loop or a locate): drop the fill.
+    const int domain = playing ? 1 : 0;
+    if (domain != fill_.domain || (fill_.expect >= 0.0 && std::abs (beat - fill_.expect) > 0.01))
+    {
+        if (fill_.domain >= 0) stop();
+        fill_.decided = -1.0e300;
+        fill_.domain = domain;
+    }
+    fill_.expect = beat + segBeats;
+
+    const double len = fillBeats();
+    if (fillRequested_)
+    {
+        fillRequested_ = false;
+        if (! fill_.active)
+        {
+            if (playing)
+            {
+                // The first place that ends on a bar line and starts no earlier than now. Up to a 1/16
+                // late still counts as on time: the fill starts at once and still ends on the bar.
+                constexpr double grace = 0.25;
+                const double j = std::ceil ((beat - grace + len - barPhase_) / barLength_ - 1.0e-9);
+                fill_.end = barPhase_ + j * barLength_;
+                fill_.start = std::max (beat, fill_.end - len);
+            }
+            else
+            {
+                fill_.start = beat;   // stopped: no bar to wait for
+                fill_.end = beat + len;
+            }
+            fill_.pending = true;
+        }
+    }
+    const int every = base_.fillEvery;
+    if (playing && every > 0 && ! fill_.pending && ! fill_.active)
+    {
+        // Auto: the fill ending on the next bar line whose bar number is a multiple of `every`.
+        const double j0 = std::ceil ((beat + len - barPhase_) / barLength_ - 1.0e-9);
+        double j = std::ceil (j0 / every - 1.0e-9) * every;
+        if (j < every) j = every;
+        const double end = barPhase_ + j * barLength_;
+        if (end != fill_.decided)
+        {
+            fill_.decided = end;
+            const bool fixedSeed = p_.seed != 0;
+            Pcg32 local (mix64 ((uint64_t) (uint32_t) p_.seed * 0x9e3779b97f4a7c15ULL ^ mix64 ((uint64_t) (int64_t) j ^ 0xf111)), 11);
+            if ((fixedSeed ? local : fillRng_).chance (std::clamp ((double) base_.fillChance, 0.0, 1.0)))
+            {
+                fill_.start = end - len;
+                fill_.end = end;
+                fill_.pending = true;
+            }
+        }
+    }
+    if (fill_.pending && beat >= fill_.start - eps)
+    {
+        fill_.pending = false;
+        fill_.active = true;
+        clock_.tickNow();
+        ++fills_;
+        changed = true;
+    }
+    if (fill_.active && beat >= fill_.end - eps)
+        stop();
+    return changed;
+}
+
 void Engine::process (const float* inL, const float* inR, float* outL, float* outR, int n) noexcept
 {
     if (tablesPending_.load (std::memory_order_acquire))
@@ -691,6 +809,10 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
     // Segments: split at the control grid (absolute time, so block sizes don't matter) and at every
     // MIDI event, so gates, resets and clock pulses land on their own sample.
     const double bps = (transport_.valid && transport_.bpm > 1.0 ? transport_.bpm : 120.0) / 60.0 / sr_;
+    // Bars for Break this bar: the host's time signature and a bar line it reported (4/4 from 0 if none).
+    barLength_ = transport_.valid && transport_.barLength >= 0.25 && transport_.barLength <= 64.0 ? transport_.barLength : 4.0;
+    barPhase_ = transport_.valid ? std::fmod (transport_.barStart, barLength_) : 0.0;
+    if (barPhase_ < 0.0) barPhase_ += barLength_;
     int nextNote = 0;
     for (int i = 0; i < n;)
     {
@@ -699,19 +821,35 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
             pulse = handleNote (notes_[(size_t) nextNote++]) || pulse;
         const int64_t abs = processed_ + i;
         const int intoGrid = (int) (abs % kControlSamples);
+        int end = std::min (n, i + kControlSamples - intoGrid);
+        if (nextNote < numNotes_)
+            end = std::min (end, std::max (i + 1, notes_[(size_t) nextNote].offset));
+        // Break this bar: start and end on their own sample.
+        const double beat = playing ? transport_.ppq + (double) i * bps : freeBeat_;
+        const bool fillChanged = updateFill (beat, playing, (double) (end - i) * bps);
+        if (fill_.pending || fill_.active)
+        {
+            const double edge = fill_.pending ? fill_.start : fill_.end;
+            const int at = i + (int) std::ceil ((edge - beat) / bps - 1.0e-6);
+            if (at > i && at < end)
+            {
+                end = at;
+                fill_.expect = beat + (double) (end - i) * bps;
+            }
+        }
         if (intoGrid == 0)
         {
             updateModulation (i);
             applyEffective();
         }
-        int end = std::min (n, i + kControlSamples - intoGrid);
-        if (nextNote < numNotes_)
-            end = std::min (end, std::max (i + 1, notes_[(size_t) nextNote].offset));
+        else if (fillChanged)
+            applyEffective();
         HostTransport t = transport_;
         if (playing)
             t.ppq += (double) i * bps;
         clock_.beginBlock (t, end - i, pulse);
         renderSegment (inL, inR, outL, outR, i, end);
+        freeBeat_ += (double) (end - i) * bps;
         i = end;
     }
     {
@@ -756,6 +894,8 @@ void Engine::process (const float* inL, const float* inR, float* outL, float* ou
     status_.bendOn.store (p_.mode == Mode::micro ? p_.bendOnMicro : p_.bendOnMacro, std::memory_order_relaxed);
     status_.breakOn.store (p_.mode == Mode::micro ? p_.breakOnMicro : p_.breakOnMacro, std::memory_order_relaxed);
     status_.corruptType.store ((int) p_.corruptType, std::memory_order_relaxed);
+    status_.fill.store (fill_.active ? 2 : fill_.pending ? 1 : 0, std::memory_order_relaxed);
+    status_.fills.store (fills_, std::memory_order_relaxed);
     status_.windowStart.store (voices_[0].win.start, std::memory_order_relaxed);
     status_.windowLength.store (voices_[0].win.length, std::memory_order_relaxed);
     status_.period.store (clock_.periodSamples(), std::memory_order_relaxed);

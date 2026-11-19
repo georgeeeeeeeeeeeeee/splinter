@@ -31,7 +31,9 @@ enum class Mode { macro = 0, micro = 1 };
 enum class StereoMode { unique = 0, shared = 1 };
 enum class GateMode { latching = 0, momentary = 1 };
 // Gate notes (brief §3.10), in the order of Engine::setGateNotes.
-enum Gate { gateFreeze = 0, gateBend, gateBreak, gateCorrupt, gateReset, gateClock, kNumGates };
+enum Gate { gateFreeze = 0, gateBend, gateBreak, gateCorrupt, gateReset, gateClock, gateFill, kNumGates };
+// Break this bar: how long the fill is (beats or bars), in the order of the fillLength choice.
+enum class FillLength { beat = 0, twoBeats, bar, twoBars };
 
 struct EngineParams
 {
@@ -64,6 +66,13 @@ struct EngineParams
     // Stage 7: the output safety clipper (transparent to -1 dBFS, never past 0 dBFS).
     bool safetyClip = true;
     float outputDb = 0.0f;   // output trim, -24..+12 dB, smoothed over 20 ms
+    // Break this bar: a fill armed by triggerFill() (or the Break bar gate) waits for its place before
+    // a bar line, plays glitched (wet, Macro dice, a fast host-synced clock) and lets go on the downbeat.
+    // Auto: every N bars, the last part of the Nth bar breaks with a chance.
+    FillLength fillLength = FillLength::bar;
+    float fillAmount = 0.6f;   // 0..1: how hard the fill breaks
+    int fillEvery = 0;         // 0 = by hand only; otherwise every 2, 4, 8 or 16 bars
+    float fillChance = 0.5f;   // 0..1: the chance each auto fill plays
 };
 
 // A MIDI note (or CC) for the engine, at a sample offset in the next process() block.
@@ -101,6 +110,8 @@ public:
     void setParams (const EngineParams& p) noexcept;
     void setTransport (const HostTransport& t) noexcept { transport_ = t; }   // once per block
     void triggerReset() noexcept { resetRequested_ = true; }
+    // Break this bar: arm a fill (the button / its parameter's rising edge). Audio thread / offline.
+    void triggerFill() noexcept { fillRequested_ = true; }
     // The seed Macro mode uses when the seed parameter is 0 (the plug-in picks one per session).
     void setSessionSeed (uint64_t s) noexcept { sessionSeed_ = s; reseed(); }
 
@@ -155,6 +166,8 @@ public:
         std::atomic<int64_t> written { 0 };
         std::atomic<int> clockStep { 4 };
         std::atomic<uint32_t> clips { 0 };   // blocks in which the safety clipper acted
+        std::atomic<int> fill { 0 };          // Break this bar: 0 idle, 1 armed (waiting for its place), 2 playing
+        std::atomic<uint32_t> fills { 0 };    // fills started (auto ones included)
     };
     const Overview& overview() const noexcept { return overview_; }
     const Status& status() const noexcept { return status_; }
@@ -204,6 +217,10 @@ private:
     int traverseSlice (int repeats) const noexcept;
     float silenceGain (const Voice& v) const noexcept;
     void reseed() noexcept;
+    // Break this bar, at the start of each segment: arm, start and end fills at beat `beat` (the host's
+    // ppq while playing, else a free-running count). True if the fill started or ended.
+    bool updateFill (double beat, bool playing, double segBeats) noexcept;
+    double fillBeats() const noexcept;
     Pcg32 tickRng (int stream, int64_t tickIndex) noexcept;
 
     double sr_ = 48000.0;
@@ -225,7 +242,7 @@ private:
     // Stage 2.
     std::array<NoteEvent, kMaxNotes> notes_ {};
     int numNotes_ = 0;
-    std::array<int, kNumGates> gateNotes_ { 36, 37, 38, 39, 40, 41 };   // C1 .. F1
+    std::array<int, kNumGates> gateNotes_ { 36, 37, 38, 39, 40, 41, -1 };   // C1 .. F1; Break bar unassigned
     int pitchNote_ = 60;
     bool hasPitch_ = false;
     double octSmoothed_ = 0.0, octCoef_ = 0.001;
@@ -263,6 +280,22 @@ private:
     int lastPlaying_ = -1;   // -1 unknown, so the first block isn't a "transport start"
     std::atomic<bool> clearGates_ { false };
     GateMode lastGateMode_ = GateMode::latching;
+
+    // Break this bar.
+    struct FillState
+    {
+        bool pending = false, active = false;
+        double start = 0.0, end = 0.0;   // beats
+        double expect = -1.0;            // where this segment's beat should be (a jump cancels the fill)
+        double decided = -1.0e300;       // the auto fill whose dice have been rolled (its end, in beats)
+        int domain = -1;                 // 1 host beats (playing), 0 free-running, -1 none yet
+    };
+    FillState fill_;
+    bool fillRequested_ = false;
+    double freeBeat_ = 0.0;
+    double barLength_ = 4.0, barPhase_ = 0.0;
+    Pcg32 fillRng_ {};
+    uint32_t fills_ = 0;
 
     std::array<TickEvent, kTickRing> ticks_ {};
     std::atomic<uint64_t> tickCount_ { 0 };

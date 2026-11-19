@@ -122,3 +122,14 @@ George asked for Splinter to be stress-tested and given "a really thoughtful sui
 - **Level-matched with a new Output trim (N44).** `tools/check_presets.py --calibrate` sets each preset's trim to bring its median level to the dry's, capped so that no preset leans on the clipper. Six presets (gaps or soft swells: Triplet Gate, Power Cut and four Textures) end up 2–4 dB under because a louder trim would clip. The trims live in `tuning/preset_trims.json`, apart from the definitions, so they can be re-measured after any change.
 - **Checked against the real plug-in, not by eye.** Each preset renders on the material its category is for, over three seeds and three tempos (and with scripted MIDI for Perform). The checks and the similarity measure are described in the README. Two fixed-seed presets (Fill Maker, Locked Groove) are deliberately repeatable: the same bars glitch the same way on every pass.
 - **What the stress test found:** Destroy produced DC (now blocked, N25); short repeated slices carry a little DC (left, N45); my own render tool had a dangling MIDI list (fixed); and the fuzz's +24 dBFS headroom check now measures before the Output trim. Survey: 148 settings × 4 materials. Fuzz: 3 × 4 minutes (about 30 hours of audio), passing.
+
+## D28: Break this bar is a performance layer over the engine, not a new engine (20 Nov 2026)
+
+George asked for a "break this bar" function, with a button and an auto mode ("Button and auto" from the options).
+
+- **The fill reuses what Splinter already does well:** for its length it overrides the effective parameters (wet, Macro, a fast host-synced clock, the Break and Bend dice, a little Corrupt at the top), then hands back. No new DSP, so every glitch it makes is one the engine is already tested for.
+- **Sample-accurate in the beat domain.** The engine splits its segments at the fill's start and end, like it does for MIDI events, and asks the clock for a tick on those exact samples (`Clock::tickNow`). The result is identical for any block size (tested).
+- **It ends on the downbeat, not "after N ticks".** That's the musical promise: the next bar is clean. A loop or locate cancels the fill instead of guessing.
+- **There's no default gate note.** C1–F1 are taken, and any other note could be someone's pitch with Note to Speed. The parameter is the primary trigger; Live can key-map it or MIDI-map it.
+- **Not done (ideas):** fill "flavours" (a stutter-only fill, a tape-stop fill), and a fill that grows across the bar (intensity rising to the downbeat).
+

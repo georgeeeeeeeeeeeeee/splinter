@@ -136,6 +136,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout layout()
                                                             juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction ([] (float v, int) {
                                                                 return (v > 0.0f ? "+" : "") + juce::String (juce::roundToInt (v)) + "%"; })));
     }
+    // Break this bar (state v9). Last in the list, so existing automation and host indices don't move.
+    l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { toJuce (params::fillTriggerId), 1 }, "Break This Bar", false));
+    choice (toJuce (params::fillLengthId), "Break Length",
+            names ({ params::kFillLengths[0], params::kFillLengths[1], params::kFillLengths[2], params::kFillLengths[3] }), 2);
+    pctParam (toJuce (params::fillAmount.id), toJuce (params::fillAmount.name), 0.0f, params::fillAmount.def);
+    choice (toJuce (params::fillEveryId), "Break Every",
+            names ({ params::kFillEvery[0], params::kFillEvery[1], params::kFillEvery[2], params::kFillEvery[3], params::kFillEvery[4] }), 0);
+    pctParam (toJuce (params::fillChance.id), toJuce (params::fillChance.name), 0.0f, params::fillChance.def);
     return l;
 }
 } // namespace
@@ -153,7 +161,8 @@ FaultProcessor::FaultProcessor()
             get (params::stereoModeId), get (params::seedId),
             get (params::corruptId), get (params::corruptTypeId), get (params::corruptSetId),
             get (params::bendAttenId), get (params::breakAttenId), get (params::corruptAttenId), get (params::gateModeId), get (params::corruptAsResetId),
-            get (params::envAttackId), get (params::envReleaseId), get (params::envGainId), get (params::safetyClipId), get (params::output.id) };
+            get (params::envAttackId), get (params::envReleaseId), get (params::envGainId), get (params::safetyClipId), get (params::output.id),
+            get (params::fillTriggerId), get (params::fillLengthId), get (params::fillAmount.id), get (params::fillEveryId), get (params::fillChance.id) };
     const auto getS = [this] (const juce::String& id) { return apvts.getRawParameterValue (id); };
     for (int m = 0; m < dsp::kNumModulators; ++m)
     {
@@ -242,6 +251,10 @@ dsp::EngineParams FaultProcessor::readParams() const noexcept
     p.corruptAsReset = raw.corruptAsReset->load() > 0.5f;
     p.safetyClip = raw.safetyClip->load() > 0.5f;
     p.outputDb = raw.output->load();
+    p.fillLength = (dsp::FillLength) std::clamp ((int) std::lround (raw.fillLength->load()), 0, 3);
+    p.fillAmount = raw.fillAmount->load() * 0.01f;
+    p.fillEvery = params::kFillEveryBars[std::clamp ((int) std::lround (raw.fillEvery->load()), 0, 4)];
+    p.fillChance = raw.fillChance->load() * 0.01f;
     p.mod.env = { raw.envAttack->load(), raw.envRelease->load(), raw.envGain->load() };
     for (int m = 0; m < dsp::kNumModulators; ++m)
     {
@@ -323,6 +336,10 @@ void FaultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
     if (reset && ! resetHeld)
         engine_.triggerReset();
     resetHeld = reset;
+    const bool fill = raw.fillTrigger->load() > 0.5f;   // Break this bar arms on the rising edge too
+    if (fill && ! fillHeld)
+        engine_.triggerFill();
+    fillHeld = fill;
 
     dsp::HostTransport t;
     if (auto* ph = getPlayHead())
@@ -332,6 +349,9 @@ void FaultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiB
             t.playing = pos->getIsPlaying();
             t.bpm = pos->getBpm().orFallback (120.0);
             t.ppq = pos->getPpqPosition().orFallback (0.0);
+            if (const auto sig = pos->getTimeSignature(); sig.hasValue() && sig->numerator > 0 && sig->denominator > 0)
+                t.barLength = 4.0 * sig->numerator / sig->denominator;
+            t.barStart = pos->getPpqPositionOfLastBarStart().orFallback (0.0);
         }
     engine_.setTransport (t);
 
@@ -457,6 +477,7 @@ void FaultProcessor::restoreDefaults()
     set (toJuce (params::corruptAsResetId), 0.0f);
     set (toJuce (params::safetyClipId), 1.0f);
     set (toJuce (params::output.id), params::output.def);
+    set (toJuce (params::fillEveryId), 0.0f);   // Break this bar back to by hand
     for (int r = 1; r <= dsp::kNumRoutes; ++r)
     {
         set ("route" + juce::String (r) + "Source", 0.0f);
