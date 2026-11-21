@@ -126,6 +126,16 @@ FaultEditor::FaultEditor (FaultProcessor& p)
 
     content.addChildComponent (modDrawer);
     content.addChildComponent (settingsDrawer);
+    for (auto* b : { &macroBtn, &microBtn }) lvrs::Spotlight::tag (*b, "mode");
+    for (auto* b : { &intBtn, &hostBtn, &noteBtn }) lvrs::Spotlight::tag (*b, "clockSource");
+    lvrs::Spotlight::tag (resetBtn, "reset");
+    lvrs::Spotlight::tag (fillBtn, "fillTrigger");
+    spotlight = std::make_unique<lvrs::Spotlight> (p, content);
+    spotlight->onReveal = [this] (const juce::String&, juce::Component& c) {
+        if (modDrawer.isParentOf (&c)) showDrawer (1);
+        else if (settingsDrawer.isParentOf (&c)) showDrawer (2);
+    };
+    content.addAndMakeVisible (*spotlight);
     addAndMakeVisible (content);
     content.setBounds (0, 0, kBaseW, kBaseH);
     layout();
@@ -197,6 +207,7 @@ void FaultEditor::layout()
     const auto drawerArea = juce::Rectangle<int> (184, 52, 532, 496);
     modDrawer.setBounds (drawerArea);
     settingsDrawer.setBounds (drawerArea);
+    if (spotlight != nullptr) spotlight->setBounds (0, 0, kBaseW, kBaseH);
 }
 
 void FaultEditor::Content::paint (juce::Graphics& g)

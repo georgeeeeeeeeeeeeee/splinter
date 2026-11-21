@@ -3,6 +3,7 @@
 // modulation ring from the knob's own position to where modulation has taken it (read from the engine's
 // atomics). It's also a drop target for source chips from the mod drawer: dropping one assigns a route.
 
+#include "ui/Spotlight.h"
 #include "ui/Theme.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -52,6 +53,7 @@ public:
         : param (p), title (std::move (name)), colour (accent), destination (dest),
           attachment (p, slider)
     {
+        lvrs::Spotlight::tag (*this, p.getParameterID());
         slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
         slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
         slider.setRotaryParameters (kRotaryStart, kRotaryEnd, true);

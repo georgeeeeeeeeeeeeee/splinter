@@ -9,6 +9,7 @@
 #include "ui/Knob.h"
 #include "ui/ModDrawer.h"
 #include "ui/SettingsDrawer.h"
+#include "ui/Spotlight.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -26,6 +27,7 @@ public:
     // For the offline snapshot tool: open a drawer without clicking.
     void showDrawer (int which);   // 0 none, 1 mod, 2 settings
     void refreshNow() { timerCallback(); }
+    lvrs::Spotlight& getSpotlight() { return *spotlight; }
 
 private:
     class Content final : public juce::Component, public juce::DragAndDropContainer
@@ -58,6 +60,7 @@ private:
     std::unique_ptr<ui::ParamSlider> fillAmount, fillChance;
     ui::ModDrawer modDrawer;
     ui::SettingsDrawer settingsDrawer;
+    std::unique_ptr<lvrs::Spotlight> spotlight;   // shows what Key Map / MIDI Map / automation is moving
     int presetCount = -1;
     juce::String shownPreset;
     std::unique_ptr<juce::AlertWindow> saveWindow;

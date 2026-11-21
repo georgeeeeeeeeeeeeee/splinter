@@ -2,6 +2,7 @@
 // Small parameter controls for the drawers: a labelled slider with its value, a combo, a toggle
 // button, a draggable source chip and a mini scope.
 
+#include "ui/Spotlight.h"
 #include "ui/Theme.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -21,6 +22,7 @@ public:
     ParamSlider (juce::AudioProcessorValueTreeState& s, const juce::String& id, juce::String label, juce::Colour accent = colours::buffer)
         : p (param (s, id)), name (std::move (label)), att (p, slider)
     {
+        lvrs::Spotlight::tag (*this, id);
         slider.setSliderStyle (juce::Slider::LinearHorizontal);
         slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
         slider.setColour (juce::Slider::trackColourId, accent);
@@ -53,6 +55,7 @@ public:
     ParamCombo (juce::AudioProcessorValueTreeState& s, const juce::String& id, juce::String label = {})
         : name (std::move (label))
     {
+        lvrs::Spotlight::tag (*this, id);
         auto& p = param (s, id);
         if (auto* c = dynamic_cast<juce::AudioParameterChoice*> (&p))
             box.addItemList (c->choices, 1);
@@ -91,6 +94,7 @@ public:
         if (id == attachedId) return;
         att.reset();
         attachedId = id;
+        lvrs::Spotlight::tag (*this, id);
         att = std::make_unique<juce::ButtonParameterAttachment> (param (s, id), *this);
     }
 

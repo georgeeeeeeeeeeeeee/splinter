@@ -221,6 +221,32 @@ int main (int argc, char* argv[])
         if (opt ("--drawer") == "mod") fe->showDrawer (1);
         if (opt ("--drawer") == "settings") fe->showDrawer (2);
         for (int i = 0; i < 30; ++i) fe->refreshNow();   // let scopes and the view fill
+        if (opt ("--spotlight-check").isNotEmpty())
+        {
+            // As Live's Key Map / MIDI Map does it: set the value, no gesture. Then as the window does it.
+            auto& sp = fe->getSpotlight();
+            const auto hostSet = [&p] (const char* id, float v) {
+                auto* q = p.getApvts().getParameter (id);
+                q->setValue (v);
+                q->sendValueChangedMessageToListeners (v);
+            };
+            int failures = 0;
+            const auto expect = [&failures] (bool ok, const char* what) { std::cout << (ok ? "ok   " : "FAIL ") << what << std::endl; failures += ok ? 0 : 1; };
+            sp.poll();
+            expect (sp.litCount() == 0, "nothing lit at rest");
+            hostSet ("fillChance", 0.8f); sp.poll();
+            expect (sp.litCount() == 1 && sp.newest() == "fillChance", "mapped Chance lights");
+            auto* q = p.getApvts().getParameter ("bend");
+            q->beginChangeGesture(); q->setValueNotifyingHost (0.9f); q->endChangeGesture(); sp.poll();
+            expect (sp.newest() == "fillChance", "a drag in the window doesn't light");
+            for (auto id : { "time", "repeats", "mix", "corrupt", "break", "fillAmount" }) hostSet (id, 0.3f);
+            sp.poll();
+            expect (sp.newest() == "fillChance", "a preset-sized jump doesn't light");
+            hostSet ("envAttack", 0.7f); sp.poll();
+            expect (sp.newest() == "envAttack", "a control in the closed mod drawer lights");
+            hostSet ("fillLength", 0.0f); sp.poll();
+            if (failures > 0) return 1;
+        }
         const auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
         const auto f = cwd.getChildFile (opt ("--snapshot"));
         f.deleteFile();
