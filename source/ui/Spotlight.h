@@ -159,16 +159,18 @@ private:
         const double now = juce::Time::getMillisecondCounterHiRes();
         const bool touching = touchingWindow();
         std::vector<Watch*> moved;
+        int changed = 0;   // all of them, the window's own too: a preset load is many at once
         for (auto& w : watches_)
         {
             const float v = w->param->getValue();
             if (std::abs (v - w->last) < 1.0e-5f) continue;
             w->last = v;
+            ++changed;
             if (touching || w->gesture.load() || now - w->gestureEnd.load() < kQuietMs) continue;
             if (ignore && ignore (w->id)) continue;
             moved.push_back (w.get());
         }
-        if (active && ! moved.empty() && (int) moved.size() < kPresetLoad)
+        if (active && ! moved.empty() && changed < kPresetLoad)
             for (auto* w : moved) light (*w, now);
         // Drop faded ones; repaint only while something is showing.
         hits_.erase (std::remove_if (hits_.begin(), hits_.end(), [&] (const Hit& h) { return alpha (h, now) <= 0.0f; }), hits_.end());
