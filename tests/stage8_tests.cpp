@@ -244,3 +244,28 @@ TEST_CASE ("A second press while a fill plays is ignored; the status shows armed
     CHECK (r.states[25] == 2);    // 2.5 s: playing
     CHECK (r.states[45] == 0);    // 4.5 s: done
 }
+
+TEST_CASE ("Auto every 8 bars keeps going after a press by hand", "[stage8][fill][auto][press]")
+{
+    // George, 21 Nov: Every 8 bars at 100%, press Break this bar: it broke once, then never again.
+    // (The press took over the auto fill already armed for bar 8, and bar 8 counted as decided.)
+    const auto in = noise ((size_t) (70.0 * kSr), 0.3f, 10);   // 35 bars at 120 (a bar is 2 s)
+    auto p = dryParams();
+    p.fillEvery = 8;
+    p.fillChance = 1.0f;
+    for (auto len : { dsp::FillLength::beat, dsp::FillLength::twoBeats, dsp::FillLength::bar, dsp::FillLength::twoBars })
+        for (double press : { 0.5, 3.0, 9.9, 13.9, 15.0, 21.0, 33.0 })
+        {
+            p.fillLength = len;
+            const auto r = run (in, p, { press }, [] (size_t) { return 512; });
+            // The last beat of bars 8, 16, 24 and 32 breaks, whenever the press was.
+            for (int bar : { 8, 16, 24, 32 })
+            {
+                bool wet = false;
+                for (long i = sec (2.0 * bar - 0.25); i < sec (2.0 * bar - 0.05) && ! wet; ++i)
+                    wet = std::abs (r.l[(size_t) i] - in[(size_t) i]) > 1.0e-6f;
+                INFO ("length " << (int) len << ", pressed at " << press << " s, bar " << bar);
+                CHECK (wet);
+            }
+        }
+}

@@ -717,6 +717,7 @@ bool Engine::updateFill (double beat, bool playing, double segBeats) noexcept
     {
         if (fill_.domain >= 0) stop();
         fill_.decided = -1.0e300;
+        fill_.resume = false;
         fill_.domain = domain;
     }
     fill_.expect = beat + segBeats;
@@ -741,6 +742,14 @@ bool Engine::updateFill (double beat, bool playing, double segBeats) noexcept
                 fill_.start = beat;   // stopped: no bar to wait for
                 fill_.end = beat + len;
             }
+            // An auto fill already armed for a later bar line gives way to this one, but isn't lost: it's
+            // decided again once this one is over (the same bar, so a fixed seed gives the same answer).
+            // Ending on the same bar line, the two are simply one fill.
+            if (fill_.pending && fill_.decided > fill_.end + eps)
+            {
+                fill_.decided = -1.0e300;
+                fill_.resume = true;
+            }
             fill_.pending = true;
         }
     }
@@ -748,7 +757,10 @@ bool Engine::updateFill (double beat, bool playing, double segBeats) noexcept
     if (playing && every > 0 && ! fill_.pending && ! fill_.active)
     {
         // Auto: the fill ending on the next bar line whose bar number is a multiple of `every`.
-        const double j0 = std::ceil ((beat + len - barPhase_) / barLength_ - 1.0e-9);
+        // Resuming after a press that displaced it: the fill may already be due, so it starts at once,
+        // shortened, and still ends on its bar line.
+        const double j0 = fill_.resume ? std::ceil ((beat + eps - barPhase_) / barLength_ - 1.0e-9)
+                                       : std::ceil ((beat + len - barPhase_) / barLength_ - 1.0e-9);
         double j = std::ceil (j0 / every - 1.0e-9) * every;
         if (j < every) j = every;
         const double end = barPhase_ + j * barLength_;
@@ -757,9 +769,11 @@ bool Engine::updateFill (double beat, bool playing, double segBeats) noexcept
             fill_.decided = end;
             const bool fixedSeed = p_.seed != 0;
             Pcg32 local (mix64 ((uint64_t) (uint32_t) p_.seed * 0x9e3779b97f4a7c15ULL ^ mix64 ((uint64_t) (int64_t) j ^ 0xf111)), 11);
+            const bool resumed = fill_.resume;
+            fill_.resume = false;
             if ((fixedSeed ? local : fillRng_).chance (std::clamp ((double) base_.fillChance, 0.0, 1.0)))
             {
-                fill_.start = end - len;
+                fill_.start = resumed ? std::max (beat, end - len) : end - len;
                 fill_.end = end;
                 fill_.pending = true;
             }

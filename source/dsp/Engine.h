@@ -289,6 +289,7 @@ private:
         double expect = -1.0;            // where this segment's beat should be (a jump cancels the fill)
         double decided = -1.0e300;       // the auto fill whose dice have been rolled (its end, in beats)
         int domain = -1;                 // 1 host beats (playing), 0 free-running, -1 none yet
+        bool resume = false;             // a press displaced the armed auto fill: decide it again, due or not
     };
     FillState fill_;
     bool fillRequested_ = false;
