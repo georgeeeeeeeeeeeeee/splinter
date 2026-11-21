@@ -3,8 +3,8 @@ name: Build
 # Mac (universal AU + VST3) and Windows (x64 VST3) release builds, with the DSP unit tests,
 # the macro-table bake check and pluginval at strictness 10. Packages are uploaded as artifacts.
 #
-# Runs on release tags (v*) and when started by hand (Actions > Build > Run workflow), not on
-# every push: the repository is private, and GitHub counts macOS minutes at ten times the rate.
+# Runs on release tags (v*) and when started by hand (Actions > Build > Run workflow). A tag also
+# collects both packages into a draft GitHub release, checked and published by hand.
 on:
   push:
     tags: ['v*']
@@ -138,3 +138,53 @@ jobs:
           path: ${{ env.PACKAGE }}
           archive: false
           if-no-files-found: error
+
+  release:
+    name: Draft GitHub release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: Splinter-*
+          path: dist
+          merge-multiple: true
+          skip-decompress: true
+
+      - name: Checksums
+        run: |
+          cd dist
+          ls -la
+          test "$(ls Splinter-*.zip | wc -l)" -eq 2
+          sha256sum Splinter-*.zip > SHA256SUMS.txt
+
+      - name: Release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            echo "Download the zip for your computer below. Each has the plug-in and an install guide (\`README.txt\`)."
+            echo
+            echo "- **macOS** 11 or later, Apple silicon and Intel (AU + VST3): \`Splinter-$VERSION-mac.zip\`"
+            echo "- **Windows** 64-bit (VST3): \`Splinter-$VERSION-windows.zip\`"
+            echo
+            echo "**macOS:** the plug-in isn't notarised by Apple (it has an ad-hoc signature), so macOS blocks it the first time. The install guide explains the one-time step."
+            echo
+            awk -v v="$VERSION" '$0 ~ "^## \\[" v "\\]" { on = 1; next } on && /^## / { exit } on { print }' CHANGELOG.md
+          } > notes.md
+          cat notes.md
+
+      - name: Create or update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+              gh release upload "$GITHUB_REF_NAME" dist/Splinter-*.zip dist/SHA256SUMS.txt --clobber
+          else
+              gh release create "$GITHUB_REF_NAME" dist/Splinter-*.zip dist/SHA256SUMS.txt \
+                  --draft --verify-tag --title "Splinter ${GITHUB_REF_NAME#v}" --notes-file notes.md
+          fi

@@ -1,5 +1,5 @@
-FAULT (working title), release candidate
-=========================================
+SPLINTER 1.0.0
+==============
 
 A circuit-bent buffer effect. Splinter keeps recording the last minute or so of whatever you feed it.
 On every clock tick it plays a window of that recording back, broken: stutters, reverse, varispeed,

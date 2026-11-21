@@ -2,7 +2,11 @@
 
 A circuit-bent digital buffer effect (AU + VST3). It records audio into a long stereo buffer and, on every clock tick, plays a window of it back broken: stutters, reverse, varispeed, tape stops, skips, dropouts, then bitcrush, saturation, filter and vinyl. An original product.
 
-Status: **Stage 7, release candidate 0.9.0.** Everything from Stages 1–6 (buffer core, Micro and Macro, Corrupt, modulation, editor, now 60 presets), hardened: pluginval at strictness 8 and auval pass, state loads from any version, and a 10-minute random-automation fuzz finds no NaN/Inf, overs, stuck gates or audio-thread allocations.
+**Version 1.0.0.** Free and open source (AGPLv3). Download it from [Releases](https://github.com/georgeeeeeeeeeeeeee/splinter/releases): AU and VST3 for macOS (Apple silicon and Intel), VST3 for 64-bit Windows. Each zip has an install guide. The builds aren't notarised by Apple, so macOS needs one extra step the first time; the guide explains it.
+
+Every build passes pluginval at strictness 10 and auval. State loads from any earlier version, and a 10-minute random-automation fuzz finds no NaN/Inf, overs, stuck gates or audio-thread allocations.
+
+## Building and checking
 
 ```
 build/tests/fault_tests                       # unit tests
