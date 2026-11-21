@@ -51,6 +51,9 @@ public:
 
     // The control for `paramID` isn't showing: open what holds it (`c` is the tagged control).
     std::function<void (const juce::String& paramID, juce::Component& c)> onReveal;
+    // No control for `paramID` exists right now (the editor builds it on demand, e.g. another module's
+    // panel): show it, then the spotlight looks again.
+    std::function<void (const juce::String& paramID)> onMissing;
     // Leave some parameters out (meters, hidden ones), by ID.
     std::function<bool (const juce::String& paramID)> ignore;
     bool active = true;
@@ -186,6 +189,11 @@ private:
             {
                 onReveal (w.id, *hidden);
                 target = visible (*hidden) ? hidden : nullptr;
+            }
+            else if (hidden == nullptr && onMissing)
+            {
+                onMissing (w.id);
+                target = find (root_, w.id, true);
             }
         hits_.erase (std::remove_if (hits_.begin(), hits_.end(), [&] (const Hit& h) { return h.id == w.id; }), hits_.end());
         Hit h;

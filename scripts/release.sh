@@ -37,6 +37,7 @@ for b in AU/Splinter.component VST3/Splinter.vst3; do
   echo "$(basename "$bundle"): $archs, ad-hoc signed"
 done
 cp docs/RELEASE_README.txt "$OUT/README.txt"
+cp LICENSE "$OUT/LICENSE.txt"
 PV="$HOME/Applications/pluginval.app/Contents/MacOS/pluginval"
 if [ -x "$PV" ]; then
   "$PV" --strictness-level 8 --validate-in-process --validate "$OUT/Splinter.vst3" > "$TMP/pluginval.txt" 2>&1 \

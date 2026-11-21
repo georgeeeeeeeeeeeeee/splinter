@@ -125,10 +125,12 @@ jobs:
               ditto "$ART/AU/Splinter.component" "dist/$NAME/Splinter.component"
               ditto "$ART/VST3/Splinter.vst3" "dist/$NAME/Splinter.vst3"
               cp docs/RELEASE_README.txt "dist/$NAME/README.txt"
+              cp LICENSE "dist/$NAME/LICENSE.txt"
               (cd dist && ditto -c -k --keepParent "$NAME" "$NAME.zip")
           else
               cp -R "$ART/VST3/Splinter.vst3" "dist/$NAME/"
               sed 's/$/\r/' < docs/RELEASE_README.txt > "dist/$NAME/README.txt"
+              sed 's/$/\r/' < LICENSE > "dist/$NAME/LICENSE.txt"
               (cd dist && cmake -E tar cf "$NAME.zip" --format=zip "$NAME")
           fi
           echo "PACKAGE=dist/$NAME.zip" >> "$GITHUB_ENV"
